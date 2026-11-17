@@ -84,6 +84,10 @@ input[type="search"], input[type="number"] { width: 100%; font: 400 1rem var(--f
 .payout { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--good-bg); color: var(--good); font: 700 1.2rem var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 input[type="text"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 48px; }
 .payout.loss { background: var(--bad-bg); color: var(--bad); }
+.money.good input { background: var(--good-bg); color: var(--good); font-weight: 700; border-color: transparent; }
+.money.bad input { background: var(--bad-bg); color: var(--bad); font-weight: 700; border-color: transparent; }
+.money.good span, .money.bad span { color: inherit; }
+.money.good { color: var(--good); } .money.bad { color: var(--bad); }
 .payout.flat { background: var(--bg); color: var(--muted); }
 .txs { display: grid; gap: 8px; }
 .tx { appearance: none; text-align: left; width: 100%; font: inherit; color: var(--fg); border: 1px solid transparent; cursor: pointer; background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; min-width: 0; }
@@ -248,10 +252,10 @@ a { color: var(--accent); }
         </div>
         <div class="field">
           <label class="lbl" for="c-pay">Payout</label>
-          <output class="payout" id="c-pay" for="c-market c-pct" aria-live="polite">$0.00</output>
+          <div class="money good"><span>$</span><input id="c-pay" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
         </div>
       </div>
-      <p class="foot" id="c-note">Payout is what to pay for the card: market price &times; buy %.</p>
+      <p class="foot" id="c-note">Payout is what to pay for the card: market price &times; buy %. Type a payout and the buy % works itself out.</p>
     </section>
 
     <section class="panel" id="profit" aria-labelledby="profit-h">
@@ -267,7 +271,7 @@ a { color: var(--accent); }
         </div>
         <div class="field">
           <label class="lbl" for="p-profit">I make</label>
-          <output class="payout flat" id="p-profit" for="p-paid p-sold" aria-live="polite">&mdash;</output>
+          <div class="money" id="p-profit-box"><span>$</span><input id="p-profit" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
         </div>
       </div>
       <div class="field">
@@ -285,6 +289,7 @@ a { color: var(--accent); }
           </div>
         </div>
       </div>
+      <p class="foot" id="p-note">Type in any box: the others update to match.</p>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
       <p class="foot">Not sold yet? Leave &ldquo;Sold for&rdquo; empty and record it now; mark it sold later in Transactions.</p>
@@ -540,32 +545,49 @@ a { color: var(--accent); }
   // ---------- buy calculator ----------
   let calcKey = null;
   try { const p = localStorage.getItem("buyPct"); if (p) $("c-pct").value = p; } catch {}
+  const num = (id) => { const v = $(id).value; return v === "" ? NaN : parseFloat(v); };
+  const round2 = (v) => Math.round(v * 100) / 100;
+  // market or buy % changed: payout follows
   function calc() {
-    const m = parseFloat($("c-market").value), p = parseFloat($("c-pct").value);
-    $("c-pay").textContent = m > 0 && p >= 0 ? money(m * p / 100) : "$0.00";
+    const m = num("c-market"), p = num("c-pct");
+    $("c-pay").value = m > 0 && p >= 0 ? round2(m * p / 100).toFixed(2) : "";
     syncPaid();
   }
   $("c-market").addEventListener("input", calc);
   $("c-pct").addEventListener("input", () => { try { localStorage.setItem("buyPct", $("c-pct").value); } catch {} calc(); });
+  // payout typed: buy % follows
+  $("c-pay").addEventListener("input", () => {
+    const m = num("c-market"), pay = num("c-pay");
+    if (m > 0 && pay >= 0) $("c-pct").value = String(round2(pay / m * 100));
+    syncPaid();
+  });
   // ---------- profit ----------
   let paidEdited = false;
   function syncPaid() {
-    if (!paidEdited) {
-      const m = parseFloat($("c-market").value), p = parseFloat($("c-pct").value);
-      $("p-paid").value = m > 0 && p >= 0 ? (Math.round(m * p) / 100).toFixed(2) : "";
-    }
+    if (!paidEdited) $("p-paid").value = $("c-pay").value;
     profit();
   }
+  function profitLook(paid, d) {
+    $("p-profit-box").className = "money" + (isNaN(d) ? "" : d < 0 ? " bad" : " good");
+    $("p-note").textContent = !isNaN(d) && paid > 0
+      ? (d < 0 ? "Loss of " : "Profit of ") + money(Math.abs(d)) + " (" + pct(d / paid * 100) + " on what you paid)."
+      : "Type in any box: the others update to match.";
+  }
+  // paid or sold changed: I make follows
   function profit() {
-    const paid = parseFloat($("p-paid").value), sold = parseFloat($("p-sold").value), out = $("p-profit");
-    if (paid >= 0 && sold >= 0) {
-      const d = sold - paid;
-      out.textContent = (d < 0 ? "−" : "+") + money(Math.abs(d)) + (paid > 0 ? " (" + pct(d / paid * 100) + ")" : "");
-      out.className = "payout" + (d < 0 ? " loss" : "");
-    } else { out.textContent = "—"; out.className = "payout flat"; }
+    const paid = num("p-paid"), sold = num("p-sold");
+    const d = paid >= 0 && sold >= 0 ? round2(sold - paid) : NaN;
+    $("p-profit").value = isNaN(d) ? "" : d.toFixed(2);
+    profitLook(paid, d);
   }
   $("p-paid").addEventListener("input", () => { paidEdited = $("p-paid").value !== ""; profit(); });
   $("p-sold").addEventListener("input", profit);
+  // I make typed: sold for follows
+  $("p-profit").addEventListener("input", () => {
+    const paid = num("p-paid"), d = num("p-profit");
+    if (paid >= 0 && !isNaN(d)) $("p-sold").value = round2(paid + d).toFixed(2);
+    profitLook(paid, d);
+  });
   calc();
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
@@ -660,12 +682,12 @@ a { color: var(--accent); }
     if (!txCol) return;
     const paid = parseFloat($("p-paid").value), soldRaw = $("p-sold").value, sold = parseFloat(soldRaw);
     if (!(paid >= 0)) { pmsg("Enter what you paid first.", true); return; }
-    const market = parseFloat($("c-market").value), pctv = parseFloat($("c-pct").value);
+    const market = parseFloat($("c-market").value), pctv = parseFloat($("c-pct").value), payv = parseFloat($("c-pay").value);
     const doc = {
       card: $("p-card").value.trim().slice(0, 200) || "Unnamed card",
       paid, sold: soldRaw === "" || !(sold >= 0) ? null : sold,
       market: market > 0 ? market : null, buyPct: pctv >= 0 ? pctv : null,
-      payout: market > 0 && pctv >= 0 ? Math.round(market * pctv) / 100 : null,
+      payout: payv >= 0 ? payv : null,
       cardId: sel ? sel.id : null, at: Date.now(),
     };
     if (doc.sold != null) doc.soldAt = Date.now();
