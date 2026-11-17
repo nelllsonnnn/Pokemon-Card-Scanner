@@ -99,6 +99,17 @@ input[type="text"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px
 .mini.danger { color: var(--bad); border-color: var(--bad); }
 .mini:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.ai { display: grid; gap: 8px; }
+.ai-out { background: var(--bg); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.ai-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.chip { font: 700 1rem var(--font-display); padding: 4px 12px; border-radius: 999px; }
+.chip.up { background: var(--good-bg); color: var(--good); }
+.chip.down { background: var(--bad-bg); color: var(--bad); }
+.chip.flat { background: var(--warn-bg); color: var(--warn); }
+#ai-conf { color: var(--muted); font-size: .85rem; }
+.ai-out p { margin: 0; }
+.ai-out ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: .9rem; display: grid; gap: 2px; }
+.tx-act input[type="text"] { flex: 1 1 160px; min-height: 36px; padding: 6px 10px; border-radius: 8px; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--accent); color: var(--accent-fg); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -152,6 +163,16 @@ a { color: var(--accent); }
     <div class="verdict none" id="verdict"><strong id="v-head"></strong><p id="v-body"></p></div>
     <div id="gauge-wrap" hidden>
       <div class="gauge" aria-hidden="true"><i id="g-dot"></i><div class="ticks"><span>−50%</span><span>Market</span><span>+50%</span></div></div>
+    </div>
+    <div class="ai" id="ai" hidden>
+      <button class="btn" id="ai-btn" type="button">Predict price with AI</button>
+      <div class="ai-out" id="ai-out" hidden aria-live="polite">
+        <div class="ai-head"><span class="chip" id="ai-chip"></span><span id="ai-conf"></span></div>
+        <p id="ai-sum"></p>
+        <ul id="ai-reasons"></ul>
+      </div>
+      <div class="status" id="ai-msg" role="status"></div>
+      <p class="foot">An AI estimate based on this card&rsquo;s recent prices. Not a guarantee or financial advice.</p>
     </div>
     <a class="tcg" id="r-link" href="#" target="_blank" rel="noopener">
       <span><b>Condition prices &amp; recent sales</b><small>Opens this card on TCGplayer: NM, LP, MP, HP and Damaged prices, plus its latest sales</small></span>
@@ -271,6 +292,7 @@ a { color: var(--accent); }
     refreshPhotoButtons();
   })();
   function refreshPhotoButtons() {
+    $("ai").hidden = !sample;
     const on = !!(sample && imgOK && data);
     $("take").disabled = $("pick").disabled = !on;
     if (sample !== null && !imgOK && data && !$("status").textContent)
@@ -441,7 +463,7 @@ a { color: var(--accent); }
   calc();
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
-  let txCol = null;
+  let txCol = null, lastDocs = [];
   const pmsg = (t, err) => { $("p-msg").className = "status" + (err ? " err" : ""); $("p-msg").textContent = t; };
   function txUnavailable() {
     txCol = null;
@@ -479,6 +501,7 @@ a { color: var(--accent); }
   };
 
   function renderTx(docs) {
+    lastDocs = docs;
     let paidT = 0, soldT = 0, profitT = 0, nSold = 0, holdT = 0, nHold = 0;
     const list = $("tx-list"); list.replaceChildren();
     for (const d of docs) {
@@ -511,6 +534,21 @@ a { color: var(--accent); }
         };
         act.append(mark);
       }
+      const ren = document.createElement("button"); ren.type = "button"; ren.className = "mini"; ren.textContent = "Rename";
+      ren.onclick = () => {
+        const inp = document.createElement("input"); inp.type = "text"; inp.value = String(t.card || ""); inp.maxLength = 200; inp.setAttribute("aria-label", "Transaction name");
+        const save = document.createElement("button"); save.type = "button"; save.className = "mini"; save.textContent = "Save";
+        const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "mini"; cancel.textContent = "Cancel";
+        save.onclick = async () => {
+          const val = inp.value.trim(); if (!val) { inp.focus(); return; }
+          save.disabled = true;
+          try { await txCol.doc(d.id).update({ card: val }); } catch { save.disabled = false; save.textContent = "Retry"; }
+        };
+        inp.onkeydown = (e) => { if (e.key === "Enter") save.click(); };
+        cancel.onclick = () => renderTx(lastDocs);
+        act.replaceChildren(inp, save, cancel); inp.focus(); inp.select();
+      };
+      act.append(ren);
       const del = document.createElement("button"); del.type = "button"; del.className = "mini danger"; del.textContent = "Delete";
       let armed = null;
       del.onclick = async () => {
@@ -532,6 +570,48 @@ a { color: var(--accent); }
     $("tx-state").hidden = !!docs.length;
   }
 
+  // ---------- AI price outlook ----------
+  let aiCtl = null, aiOff = false;
+  function aiReset() {
+    aiCtl?.abort(); aiCtl = null;
+    $("ai-out").hidden = true; $("ai-msg").textContent = "";
+    $("ai-btn").disabled = aiOff; $("ai-btn").textContent = "Predict price with AI";
+  }
+  $("ai-btn").onclick = async () => {
+    if (!sample || !sel || aiOff) return;
+    const c = sel, v = c.vars[selVar];
+    aiCtl?.abort(); const ctl = aiCtl = new AbortController();
+    $("ai-btn").disabled = true; $("ai-btn").textContent = "Thinking… (up to a minute)";
+    $("ai-out").hidden = true; $("ai-msg").textContent = "";
+    const f = (x) => x == null ? "unknown" : "$" + x.toFixed(2);
+    const others = c.vars.filter((x) => x !== v).map((x) => x.variant + " " + f(x.price)).join("; ") || "none";
+    const prompt = "You are a careful Pokemon TCG market analyst. Using only the data below, project whether this single's TCGplayer market price (Near Mint, English) is more likely to go up, go down, or stay flat over the next 30 days.\n\n" +
+      "Today: " + new Date().toISOString().slice(0, 10) + "\nCard: " + c.name + "\nSet: " + c.set + "\nNumber: " + c.number + "\nRarity: " + (c.rarity || "unknown") + "\nVersion: " + v.variant +
+      "\nMarket price now: " + f(v.price) + "\nYesterday: " + f(v.p1) + "\n7 days ago: " + f(v.p7) + "\n30 days ago: " + f(v.p30) + "\nCheapest listing right now: " + f(v.low) + "\nOther versions of this card: " + others +
+      "\n\nWeigh: momentum over 7 and 30 days; a cheapest listing well below market means sellers are undercutting (downward pressure), well above means thin supply (upward); sharp recent spikes often partly revert; recent sets tend to drift down as supply grows while older and vintage cards are steadier; reprint risk. Four price points is thin data, so keep confidence low unless the signals clearly agree.\n\n" +
+      'Reply with only this JSON: {"direction": "up" | "down" | "flat", "confidence": "low" | "medium" | "high", "summary": "one sentence, under 30 words", "reasons": ["2 or 3 short reasons, under 15 words each"], "watch_for": "one thing that would change the outlook, under 15 words"}';
+    try {
+      const r = await sample.json(prompt, { signal: ctl.signal });
+      if (ctl !== aiCtl || c !== sel) return;
+      const dir = ["up", "down", "flat"].includes(r?.direction) ? r.direction : "flat";
+      $("ai-chip").className = "chip " + dir;
+      $("ai-chip").textContent = dir === "up" ? "▲ Likely to go up" : dir === "down" ? "▼ Likely to go down" : "▶ Likely to stay flat";
+      $("ai-conf").textContent = (["low", "medium", "high"].includes(r?.confidence) ? r.confidence : "low") + " confidence · next 30 days";
+      $("ai-sum").textContent = String(r?.summary || "");
+      const ul = $("ai-reasons"); ul.replaceChildren();
+      for (const x of (Array.isArray(r?.reasons) ? r.reasons : []).slice(0, 3)) { const li = document.createElement("li"); li.textContent = String(x); ul.append(li); }
+      if (r?.watch_for) { const li = document.createElement("li"); li.textContent = "Watch for: " + String(r.watch_for); ul.append(li); }
+      $("ai-out").hidden = false;
+    } catch (e) {
+      if (e?.code === "cancelled") return;
+      if (e?.code === "not_granted" || e?.code === "sampling_disabled") aiOff = true;
+      $("ai-msg").className = "status err";
+      $("ai-msg").textContent = { not_granted: "The AI outlook needs your permission to use Claude.", sampling_disabled: "AI isn't available on this account.", rate_limited: "Too many requests right now. Try again in a minute." }[e?.code] || "Couldn't get a prediction. Try again.";
+    } finally {
+      if (ctl === aiCtl) { $("ai-btn").disabled = aiOff; $("ai-btn").textContent = "Predict price with AI"; }
+    }
+  };
+
   function render() {
     const v = sel.vars[selVar];
     const m = v.price;
@@ -539,7 +619,7 @@ a { color: var(--accent); }
     if (key !== calcKey) {
       calcKey = key;
       $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
-      paidEdited = false; $("p-sold").value = ""; pmsg("");
+      paidEdited = false; $("p-sold").value = ""; pmsg(""); aiReset();
       $("c-market").value = m.toFixed(2); calc();
     }
     $("s-market").textContent = money(m);
