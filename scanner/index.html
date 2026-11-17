@@ -86,7 +86,15 @@ input[type="text"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px
 .payout.loss { background: var(--bad-bg); color: var(--bad); }
 .payout.flat { background: var(--bg); color: var(--muted); }
 .txs { display: grid; gap: 8px; }
-.tx { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.tx { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; min-width: 0; }
+.tx-body { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.tx-ph { flex: none; width: 52px; height: 72px; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; cursor: pointer; background: var(--surface); }
+.tx-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tx-ph:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ph-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ph-thumb { width: 64px; height: 88px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox img { max-width: 100%; max-height: 78vh; border-radius: 10px; object-fit: contain; }
 .tx-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .tx-top b { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
 .tx-top time { color: var(--muted); font-size: .8rem; white-space: nowrap; }
@@ -242,6 +250,17 @@ a { color: var(--accent); }
           <output class="payout flat" id="p-profit" for="p-paid p-sold" aria-live="polite">&mdash;</output>
         </div>
       </div>
+      <div class="field">
+        <span class="lbl">Photo (optional)</span>
+        <div class="ph-row">
+          <img class="ph-thumb" id="p-photo-img" alt="Photo for this transaction" hidden>
+          <button class="btn" id="p-photo-btn" type="button">
+            <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Add photo
+          </button>
+          <button class="mini" id="p-photo-del" type="button" hidden>Remove</button>
+        </div>
+        <input class="file" id="p-photo" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+      </div>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
       <p class="foot">Not sold yet? Leave &ldquo;Sold for&rdquo; empty and record it now; mark it sold later in Transactions.</p>
@@ -262,6 +281,11 @@ a { color: var(--accent); }
     </section>
   </div>
   </main>
+</div>
+
+<div class="lightbox" id="lb" role="dialog" aria-label="Transaction photo" hidden>
+  <img id="lb-img" alt="Transaction photo">
+  <button class="mini" id="lb-close" type="button">Close</button>
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Pages">
@@ -343,6 +367,7 @@ a { color: var(--accent); }
     $("take").disabled = $("pick").disabled = true;
     $("shot").hidden = false;
     $("shot-img").src = URL.createObjectURL(file);
+    lastScanFile = file;
     $("shot-text").textContent = "Reading the card…";
     setStatus("");
     const st = $("status"); st.replaceChildren(); const sp = document.createElement("span"); sp.className = "spin"; st.append(sp, " Identifying card (usually 5–20 seconds)");
@@ -457,6 +482,7 @@ a { color: var(--accent); }
     });
     vb.hidden = c.vars.length < 2;
     render();
+    if (g && lastScanFile) setPhotoFile(lastScanFile);
     if (g) $("result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   }
 
@@ -507,7 +533,7 @@ a { color: var(--accent); }
   calc();
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
-  let txCol = null, lastDocs = [];
+  let txCol = null, photosCol = null, lastDocs = [];
   const pmsg = (t, err) => { $("p-msg").className = "status" + (err ? " err" : ""); $("p-msg").textContent = t; };
   function txUnavailable() {
     txCol = null;
@@ -520,6 +546,7 @@ a { color: var(--accent); }
       const uid = db && user ? await user.id() : null;
       if (!uid) return txUnavailable();
       txCol = db.doc("data/users/" + uid + "/flips").collection("tx");
+      photosCol = db.doc("data/users/" + uid + "/flips").collection("photos");
       txCol.orderBy("at", "desc").onSnapshot((s) => renderTx(s.docs), () => txUnavailable());
       $("p-save").disabled = false;
     } catch { txUnavailable(); }
@@ -534,11 +561,15 @@ a { color: var(--accent); }
       paid, sold: soldRaw === "" || !(sold >= 0) ? null : sold,
       market: parseFloat($("c-market").value) || null, cardId: sel ? sel.id : null, at: Date.now(),
     };
+    const ph = pPhoto;
+    if (ph) doc.thumb = ph.thumb;
     $("p-save").disabled = true;
     try {
-      await txCol.add(doc);
+      const ref = txCol.doc();
+      await ref.set(doc);
+      if (ph) { try { await photosCol.doc(ref.id).set({ photo: ph.full }); } catch {} }
       pmsg(doc.sold == null ? "Recorded as still holding." : "Transaction recorded.");
-      $("p-sold").value = ""; profit();
+      $("p-sold").value = ""; profit(); clearPhoto();
     } catch (e) {
       pmsg(e?.code === "quota_exceeded" ? "Storage is full. Delete some old transactions first." : "Couldn't save that. Try again.", true);
     } finally { $("p-save").disabled = !txCol; }
@@ -593,15 +624,39 @@ a { color: var(--accent); }
         act.replaceChildren(inp, save, cancel); inp.focus(); inp.select();
       };
       act.append(ren);
+      const phb = document.createElement("button"); phb.type = "button"; phb.className = "mini";
+      phb.textContent = t.thumb ? "Change photo" : "Add photo";
+      phb.onclick = () => {
+        const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.className = "file";
+        document.body.append(inp);
+        inp.onchange = async () => {
+          const f = inp.files?.[0]; inp.remove(); if (!f) return;
+          phb.disabled = true; phb.textContent = "Adding\u2026";
+          try {
+            const [full, thumb] = await Promise.all([shrink(f, 1100, 240000), shrink(f, 220, 24000)]);
+            await photosCol.doc(d.id).set({ photo: full });
+            await txCol.doc(d.id).update({ thumb });
+          } catch { phb.disabled = false; phb.textContent = "Try another photo"; }
+        };
+        inp.click();
+      };
+      act.append(phb);
       const del = document.createElement("button"); del.type = "button"; del.className = "mini danger"; del.textContent = "Delete";
       let armed = null;
       del.onclick = async () => {
         if (!armed) { del.textContent = "Tap again to delete"; armed = setTimeout(() => { armed = null; del.textContent = "Delete"; }, 4000); return; }
         clearTimeout(armed); del.disabled = true;
-        try { await txCol.doc(d.id).delete(); } catch { del.disabled = false; del.textContent = "Delete"; armed = null; }
+        try { await txCol.doc(d.id).delete(); photosCol?.doc(d.id).delete().catch(() => {}); } catch { del.disabled = false; del.textContent = "Delete"; armed = null; }
       };
       act.append(del);
-      row.append(top, nums, act); list.append(row);
+      if (typeof t.thumb === "string" && t.thumb.startsWith("data:image/")) {
+        const pb = document.createElement("button"); pb.type = "button"; pb.className = "tx-ph"; pb.setAttribute("aria-label", "View photo");
+        const im = document.createElement("img"); im.src = t.thumb; im.alt = ""; pb.append(im);
+        pb.onclick = () => openPhoto(d.id, t.thumb);
+        row.append(pb);
+      }
+      const body = document.createElement("div"); body.className = "tx-body"; body.append(top, nums, act);
+      row.append(body); list.append(row);
     }
     $("t-profit").textContent = (profitT < 0 ? "−" : "") + money(Math.abs(profitT));
     $("t-profit").className = profitT > 0 ? "up" : profitT < 0 ? "down" : "";
@@ -613,6 +668,57 @@ a { color: var(--accent); }
     $("tx-state").textContent = docs.length ? "" : "No transactions yet. Fill in the profit boxes and tap Record transaction.";
     $("tx-state").hidden = !!docs.length;
   }
+
+  // ---------- transaction photos (stored privately with the transaction) ----------
+  let pPhoto = null, lastScanFile = null, photoJob = 0, lbId = null;
+  async function shrink(file, maxDim, maxChars) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      let scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight)), q = 0.8;
+      for (let tries = 0; tries < 8; tries++) {
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale)); c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const out = c.toDataURL("image/jpeg", q);
+        if (out.length <= maxChars) return out;
+        if (q > 0.5) q -= 0.15; else scale *= 0.8;
+      }
+      throw new Error("too big");
+    } finally { URL.revokeObjectURL(url); }
+  }
+  function clearPhoto() {
+    photoJob++; pPhoto = null;
+    $("p-photo-img").hidden = true; $("p-photo-img").removeAttribute("src");
+    $("p-photo-del").hidden = true; $("p-photo-btn").lastChild.textContent = "Add photo";
+  }
+  async function setPhotoFile(file) {
+    const job = ++photoJob;
+    $("p-photo-btn").lastChild.textContent = "Adding\u2026";
+    try {
+      const [full, thumb] = await Promise.all([shrink(file, 1100, 240000), shrink(file, 220, 24000)]);
+      if (job !== photoJob) return;
+      pPhoto = { full, thumb };
+      $("p-photo-img").src = thumb; $("p-photo-img").hidden = false;
+      $("p-photo-del").hidden = false; $("p-photo-btn").lastChild.textContent = "Change photo";
+    } catch {
+      if (job === photoJob) { clearPhoto(); pmsg("That photo couldn't be used. Try another one.", true); }
+    }
+  }
+  $("p-photo-btn").onclick = () => $("p-photo").click();
+  $("p-photo").onchange = (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setPhotoFile(f); };
+  $("p-photo-del").onclick = clearPhoto;
+  function openPhoto(id, thumb) {
+    lbId = id; $("lb-img").src = thumb; $("lb").hidden = false; $("lb-close").focus();
+    photosCol?.doc(id).get().then((snap) => {
+      const p = snap.exists ? snap.data()?.photo : null;
+      if (lbId === id && typeof p === "string" && p.startsWith("data:image/")) $("lb-img").src = p;
+    }).catch(() => {});
+  }
+  function closeLb() { lbId = null; $("lb").hidden = true; $("lb-img").removeAttribute("src"); }
+  $("lb-close").onclick = closeLb;
+  $("lb").onclick = (e) => { if (e.target === $("lb")) closeLb(); };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("lb").hidden) closeLb(); });
 
   // ---------- AI price outlook ----------
   let aiCtl = null, aiOff = false;
@@ -663,7 +769,7 @@ a { color: var(--accent); }
     if (key !== calcKey) {
       calcKey = key;
       $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
-      paidEdited = false; $("p-sold").value = ""; pmsg(""); aiReset();
+      paidEdited = false; $("p-sold").value = ""; pmsg(""); aiReset(); clearPhoto();
       $("c-market").value = m.toFixed(2); calc();
     }
     $("s-market").textContent = money(m);
