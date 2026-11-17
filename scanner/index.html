@@ -76,6 +76,12 @@ input[type="search"], input[type="number"] { width: 100%; font: 400 1rem var(--f
 .up { color: var(--good); } .down { color: var(--bad); }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
+.tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--accent); color: var(--accent-fg); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
+.tcg:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.tcg span { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.tcg b { font: 600 1rem var(--font-body); }
+.tcg small { font-size: .82rem; opacity: .85; }
+.tcg svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .spin { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s 0.8s linear infinite; display: inline-block; vertical-align: -3px; }
 @keyframes s { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
@@ -122,13 +128,16 @@ a { color: var(--accent); }
     <div id="gauge-wrap" hidden>
       <div class="gauge" aria-hidden="true"><i id="g-dot"></i><div class="ticks"><span>−50%</span><span>Market</span><span>+50%</span></div></div>
     </div>
+    <a class="tcg" id="r-link" href="#" target="_blank" rel="noopener">
+      <span><b>Condition prices &amp; recent sales</b><small>Opens this card on TCGplayer: NM, LP, MP, HP and Damaged prices, plus its latest sales</small></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+    </a>
     <div class="stats">
       <div class="stat"><span>Market price</span><b id="s-market"></b><small>Recent sales, Near Mint</small></div>
       <div class="stat"><span>Cheapest listing</span><b id="s-low"></b><small>For sale right now</small></div>
       <div class="stat"><span>7 days ago</span><b id="s-p7"></b><small id="s-c7"></small></div>
       <div class="stat"><span>30 days ago</span><b id="s-p30"></b><small id="s-c30"></small></div>
     </div>
-    <p class="foot"><a id="r-link" href="#" target="_blank" rel="noopener">See this card on TCGplayer</a></p>
   </section>
 
   <p class="foot">Prices are TCGplayer market prices for English cards in Near Mint condition, refreshed daily. Played or damaged cards sell for less. A good deal is 15% or more under market; overpriced is 15% or more over.</p>
