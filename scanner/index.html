@@ -252,10 +252,10 @@ a { color: var(--accent); }
         </div>
         <div class="field">
           <label class="lbl" for="c-pay">Payout</label>
-          <div class="money good"><span>$</span><input id="c-pay" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="money"><span>$</span><input id="c-pay" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
         </div>
       </div>
-      <p class="foot" id="c-note">Payout is what to pay for the card: market price &times; buy %. Type a payout and the buy % works itself out.</p>
+      <p class="foot" id="c-note">Payout is what to pay for the card: market price &times; buy %. Type in any two boxes and the third works itself out (shown in green).</p>
     </section>
 
     <section class="panel" id="profit" aria-labelledby="profit-h">
@@ -289,7 +289,7 @@ a { color: var(--accent); }
           </div>
         </div>
       </div>
-      <p class="foot" id="p-note">Type in any box: the others update to match.</p>
+      <p class="foot" id="p-note">Type in any two boxes and the third works itself out (shown in green).</p>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
       <p class="foot">Not sold yet? Leave &ldquo;Sold for&rdquo; empty and record it now; mark it sold later in Transactions.</p>
@@ -543,52 +543,58 @@ a { color: var(--accent); }
   $("to-calc").onclick = () => { location.hash = "calculator"; };
 
   // ---------- buy calculator ----------
+  // In each group of three boxes, the two you typed in most recently decide the third.
   let calcKey = null;
   try { const p = localStorage.getItem("buyPct"); if (p) $("c-pct").value = p; } catch {}
   const num = (id) => { const v = $(id).value; return v === "" ? NaN : parseFloat(v); };
   const round2 = (v) => Math.round(v * 100) / 100;
-  // market or buy % changed: payout follows
-  function calc() {
-    const m = num("c-market"), p = num("c-pct");
-    $("c-pay").value = m > 0 && p >= 0 ? round2(m * p / 100).toFixed(2) : "";
+  const fix = (v) => (isFinite(v) ? round2(v).toFixed(2) : "");
+  const A = ["c-market", "c-pct", "c-pay"], B = ["p-paid", "p-sold", "p-profit"];
+  let recentA = ["c-pct", "c-market"], recentB = ["p-sold", "p-paid"];
+  const touch = (list, id) => [id, ...list.filter((x) => x !== id)].slice(0, 2);
+  const targetOf = (all, recent) => all.find((x) => !recent.includes(x));
+  const HINT = "Type in any two boxes and the third works itself out (shown in green).";
+
+  function solveA() {
+    const t = targetOf(A, recentA), m = num("c-market"), p = num("c-pct"), pay = num("c-pay");
+    if (t === "c-pay") $("c-pay").value = m >= 0 && p >= 0 ? fix(m * p / 100) : "";
+    else if (t === "c-market") $("c-market").value = pay >= 0 && p > 0 ? fix(pay / p * 100) : "";
+    else $("c-pct").value = pay >= 0 && m > 0 ? String(round2(pay / m * 100)) : "";
+    for (const id of A) $(id).parentElement.classList.toggle("good", id === t);
     syncPaid();
   }
-  $("c-market").addEventListener("input", calc);
-  $("c-pct").addEventListener("input", () => { try { localStorage.setItem("buyPct", $("c-pct").value); } catch {} calc(); });
-  // payout typed: buy % follows
-  $("c-pay").addEventListener("input", () => {
-    const m = num("c-market"), pay = num("c-pay");
-    if (m > 0 && pay >= 0) $("c-pct").value = String(round2(pay / m * 100));
-    syncPaid();
+  // market set, by typing or by picking a card
+  function calc() { recentA = touch(recentA, "c-market"); solveA(); }
+  for (const id of A) $(id).addEventListener("input", () => {
+    if (id === "c-pct") { try { localStorage.setItem("buyPct", $("c-pct").value); } catch {} }
+    recentA = touch(recentA, id); solveA();
   });
+
   // ---------- profit ----------
   let paidEdited = false;
   function syncPaid() {
-    if (!paidEdited) $("p-paid").value = $("c-pay").value;
-    profit();
+    if (!paidEdited) { $("p-paid").value = $("c-pay").value; recentB = touch(recentB, "p-paid"); }
+    solveB();
   }
-  function profitLook(paid, d) {
-    $("p-profit-box").className = "money" + (isNaN(d) ? "" : d < 0 ? " bad" : " good");
-    $("p-note").textContent = !isNaN(d) && paid > 0
-      ? (d < 0 ? "Loss of " : "Profit of ") + money(Math.abs(d)) + " (" + pct(d / paid * 100) + " on what you paid)."
-      : "Type in any box: the others update to match.";
+  function solveB() {
+    const t = targetOf(B, recentB), paid = num("p-paid"), sold = num("p-sold"), mk = num("p-profit");
+    if (t === "p-profit") $("p-profit").value = paid >= 0 && sold >= 0 ? fix(sold - paid) : "";
+    else if (t === "p-sold") $("p-sold").value = paid >= 0 && !isNaN(mk) ? fix(paid + mk) : "";
+    else { $("p-paid").value = sold >= 0 && !isNaN(mk) ? fix(sold - mk) : ""; paidEdited = $("p-paid").value !== ""; }
+    for (const id of ["p-paid", "p-sold"]) $(id).parentElement.classList.toggle("good", id === t);
+    const d = num("p-profit"), pd = num("p-paid"), box = $("p-profit-box");
+    box.classList.toggle("good", !isNaN(d) && d >= 0);
+    box.classList.toggle("bad", !isNaN(d) && d < 0);
+    $("p-note").textContent = !isNaN(d) && pd > 0
+      ? (d < 0 ? "Loss of " : "Profit of ") + money(Math.abs(d)) + " (" + pct(d / pd * 100) + " on what you paid)."
+      : HINT;
   }
-  // paid or sold changed: I make follows
-  function profit() {
-    const paid = num("p-paid"), sold = num("p-sold");
-    const d = paid >= 0 && sold >= 0 ? round2(sold - paid) : NaN;
-    $("p-profit").value = isNaN(d) ? "" : d.toFixed(2);
-    profitLook(paid, d);
-  }
-  $("p-paid").addEventListener("input", () => { paidEdited = $("p-paid").value !== ""; profit(); });
-  $("p-sold").addEventListener("input", profit);
-  // I make typed: sold for follows
-  $("p-profit").addEventListener("input", () => {
-    const paid = num("p-paid"), d = num("p-profit");
-    if (paid >= 0 && !isNaN(d)) $("p-sold").value = round2(paid + d).toFixed(2);
-    profitLook(paid, d);
+  for (const id of B) $(id).addEventListener("input", () => {
+    if (id === "p-paid") paidEdited = $("p-paid").value !== "";
+    recentB = touch(recentB, id); solveB();
   });
-  calc();
+  function resetProfit() { recentB = ["p-sold", "p-paid"]; $("p-sold").value = ""; solveB(); }
+  solveA();
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
   let txCol = null, photosCol = null, lastDocs = [], openId = null, detailEditing = false;
@@ -700,7 +706,7 @@ a { color: var(--accent); }
       await ref.set(doc);
       for (const k of ["in", "out"]) if (ph[k]) { try { await photosCol.doc(ref.id + "-" + k).set({ photo: ph[k].full }); } catch {} }
       pmsg((doc.sold == null ? "Recorded as still holding." : "Transaction recorded.") + " Tap it in Transactions for details.");
-      $("p-sold").value = ""; profit(); clearPhoto();
+      resetProfit(); clearPhoto();
     } catch (e) {
       pmsg(e?.code === "quota_exceeded" ? "Storage is full. Delete some old transactions first." : "Couldn't save that. Try again.", true);
     } finally { $("p-save").disabled = !txCol; }
@@ -918,7 +924,8 @@ a { color: var(--accent); }
     if (key !== calcKey) {
       calcKey = key;
       $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
-      paidEdited = false; $("p-sold").value = ""; pmsg(""); aiReset(); clearPhoto();
+      paidEdited = false; pmsg(""); aiReset(); clearPhoto();
+      recentB = ["p-sold", "p-paid"]; $("p-sold").value = "";
       $("c-market").value = m.toFixed(2); calc();
     }
     $("s-market").textContent = money(m);
