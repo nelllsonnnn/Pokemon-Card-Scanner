@@ -1,0 +1,365 @@
+<title>Pokémon Card Scanner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column built for a phone held in one hand; result card leads, search and photo tools stay above it. */
+:root {
+  --bg: #f3f5f9; --surface: #ffffff; --fg: #141a26; --muted: #5b6475; --line: #dde2ec;
+  --accent: #2f5bd3; --accent-fg: #ffffff;
+  --good: #1b8a4b; --good-bg: #e3f4ea; --warn: #9a6a00; --warn-bg: #fbf1d9; --bad: #c0362c; --bad-bg: #fbe5e2;
+  --font-display: "Space Grotesk", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Inter", -apple-system, system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f131b; --surface: #181e2a; --fg: #e9edf5; --muted: #98a2b5; --line: #2a3242;
+  --accent: #7d9cff; --accent-fg: #0f131b;
+  --good: #5fd08f; --good-bg: #16301f; --warn: #f0c060; --warn-bg: #33290f; --bad: #ff7b6e; --bad-bg: #3a1a17;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f131b; --surface: #181e2a; --fg: #e9edf5; --muted: #98a2b5; --line: #2a3242;
+  --accent: #7d9cff; --accent-fg: #0f131b;
+  --good: #5fd08f; --good-bg: #16301f; --warn: #f0c060; --warn-bg: #33290f; --bad: #ff7b6e; --bad-bg: #3a1a17;
+  color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 560px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.7rem; margin: 0; letter-spacing: -0.01em; }
+.sub { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn { appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 600 1rem var(--font-body); padding: 13px 16px; border-radius: 12px; cursor: pointer; flex: 1 1 140px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible, input:focus-visible, .cand:focus-visible, .var:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+label.lbl { font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.field { display: grid; gap: 6px; }
+input[type="search"], input[type="number"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 48px; }
+.money { position: relative; }
+.money span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.money input { padding-left: 28px; }
+.status { font-size: .9rem; color: var(--muted); min-height: 1.3em; }
+.status.err { color: var(--bad); }
+.shot { display: flex; gap: 12px; align-items: center; }
+.shot img { width: 72px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.shot p { margin: 0; font-size: .9rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.shot b { color: var(--fg); }
+.cands { display: grid; gap: 8px; }
+.cand { text-align: left; width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 10px 12px; font: inherit; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.cand[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.cand .n { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.cand .s { grid-column: 1; color: var(--muted); font-size: .85rem; min-width: 0; overflow-wrap: anywhere; }
+.cand .p { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.result h2 { font-family: var(--font-display); font-size: 1.35rem; margin: 0; line-height: 1.2; text-wrap: balance; }
+.result .meta { color: var(--muted); font-size: .9rem; margin: 2px 0 0; }
+.vars { display: flex; flex-wrap: wrap; gap: 6px; }
+.var { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 7px 12px; font: 500 .85rem var(--font-body); cursor: pointer; min-height: 36px; }
+.var[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.verdict { border-radius: 12px; padding: 14px; display: grid; gap: 4px; }
+.verdict.good { background: var(--good-bg); color: var(--good); }
+.verdict.fair { background: var(--warn-bg); color: var(--warn); }
+.verdict.bad { background: var(--bad-bg); color: var(--bad); }
+.verdict.none { background: var(--bg); color: var(--muted); }
+.verdict strong { font-family: var(--font-display); font-size: 1.3rem; }
+.verdict p { margin: 0; color: var(--fg); font-size: .95rem; }
+.gauge { position: relative; height: 10px; border-radius: 999px; background: linear-gradient(90deg, var(--good) 0 35%, var(--warn) 35% 65%, var(--bad) 65% 100%); margin: 18px 0 22px; }
+.gauge i { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 3px solid var(--fg); transform: translate(-50%, -50%); }
+.gauge .ticks { position: absolute; top: 16px; left: 0; right: 0; display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat span { display: block; font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.stat b { font-family: var(--font-display); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.stat small { display: block; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.up { color: var(--good); } .down { color: var(--bad); }
+.foot { font-size: .8rem; color: var(--muted); margin: 0; }
+a { color: var(--accent); }
+.spin { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s 0.8s linear infinite; display: inline-block; vertical-align: -3px; }
+@keyframes s { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Pokémon Card Scanner</h1>
+    <p class="sub" id="asof">Loading TCGplayer prices…</p>
+  </header>
+
+  <section class="panel" aria-labelledby="scan-h">
+    <label class="lbl" id="scan-h">Scan a card</label>
+    <div class="row" id="photo-row">
+      <button class="btn primary" id="take" type="button" disabled>
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo
+      </button>
+      <button class="btn" id="pick" type="button" disabled>
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg>Choose photo
+      </button>
+    </div>
+    <input class="file" id="cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+    <input class="file" id="lib" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+    <div class="shot" id="shot" hidden><img id="shot-img" alt="Your card photo"><p id="shot-text"></p></div>
+    <div class="status" id="status" role="status"></div>
+    <div class="field">
+      <label class="lbl" for="q">Or search by name or number</label>
+      <input id="q" type="search" placeholder="e.g. Charizard ex 199" autocomplete="off" enterkeyhint="search">
+    </div>
+    <div class="cands" id="cands"></div>
+  </section>
+
+  <section class="panel result" id="result" hidden aria-live="polite">
+    <div>
+      <h2 id="r-name"></h2>
+      <p class="meta" id="r-meta"></p>
+    </div>
+    <div class="vars" id="r-vars" role="group" aria-label="Version"></div>
+    <div class="field">
+      <label class="lbl" for="ask">Asking price (optional)</label>
+      <div class="money"><span>$</span><input id="ask" type="number" inputmode="decimal" min="0" step="0.01" placeholder="What the seller wants"></div>
+    </div>
+    <div class="verdict none" id="verdict"><strong id="v-head"></strong><p id="v-body"></p></div>
+    <div id="gauge-wrap" hidden>
+      <div class="gauge" aria-hidden="true"><i id="g-dot"></i><div class="ticks"><span>−50%</span><span>Market</span><span>+50%</span></div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Market price</span><b id="s-market"></b><small>Recent sales, Near Mint</small></div>
+      <div class="stat"><span>Cheapest listing</span><b id="s-low"></b><small>For sale right now</small></div>
+      <div class="stat"><span>7 days ago</span><b id="s-p7"></b><small id="s-c7"></small></div>
+      <div class="stat"><span>30 days ago</span><b id="s-p30"></b><small id="s-c30"></small></div>
+    </div>
+    <p class="foot"><a id="r-link" href="#" target="_blank" rel="noopener">See this card on TCGplayer</a></p>
+  </section>
+
+  <p class="foot">Prices are TCGplayer market prices for English cards in Near Mint condition, refreshed daily. Played or damaged cards sell for less. A good deal is 15% or more under market; overpriced is 15% or more over.</p>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const money = (v) => v == null ? "—" : "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = (v) => (v > 0 ? "+" : "") + Math.round(v) + "%";
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const tokens = (s) => norm(s).split(" ").filter(Boolean);
+  const numParts = (s) => {
+    const m = String(s || "").toUpperCase().replace(/\s/g, "").match(/^([A-Z]*)0*(\d+)([A-Z]*)(?:\/([A-Z]*)0*(\d+))?/);
+    if (!m) return { n: norm(s).replace(/ /g, ""), total: null };
+    return { n: (m[1] + m[2] + m[3]).toLowerCase(), total: m[5] || null };
+  };
+
+  let cards = [], byId = new Map(), data = null, sel = null, selVar = 0, sample = null, imgOK = false;
+
+  // ---------- prices ----------
+  fetch("prices.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
+    data = d;
+    const C = Object.fromEntries(d.cols.map((c, i) => [c, i]));
+    for (const r of d.rows) {
+      let c = byId.get(r[C.id]);
+      if (!c) {
+        const np = numParts(r[C.number]);
+        c = { id: r[C.id], name: r[C.name], set: d.sets[r[C.set]], number: r[C.number], rarity: r[C.rarity], vars: [],
+              nameTok: tokens(r[C.name]), setTok: tokens(d.sets[r[C.set]]), n: np.n, total: np.total };
+        c.hay = norm(c.name + " " + c.set + " " + c.number);
+        byId.set(c.id, c); cards.push(c);
+      }
+      c.vars.push({ variant: r[C.variant], price: r[C.price], low: r[C.low], p1: r[C.p1], p7: r[C.p7], p30: r[C.p30] });
+    }
+    for (const c of cards) c.vars.sort((a, b) => b.price - a.price);
+    $("asof").textContent = `${cards.length.toLocaleString()} cards · TCGplayer prices as of ${new Date(d.asof + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    refreshPhotoButtons();
+    if ($("q").value) search();
+  }).catch(() => {
+    $("asof").textContent = "Couldn't load prices. Reload the page to try again.";
+  });
+
+  // ---------- Claude (card recognition) ----------
+  (async () => {
+    try {
+      sample = await window.claude?.use?.("sample");
+      if (sample) { const lim = await sample.limits().catch(() => null); imgOK = !!lim?.images; }
+    } catch { sample = null; }
+    refreshPhotoButtons();
+  })();
+  function refreshPhotoButtons() {
+    const on = !!(sample && imgOK && data);
+    $("take").disabled = $("pick").disabled = !on;
+    if (sample !== null && !imgOK && data && !$("status").textContent)
+      setStatus("Photo scanning isn't available here. Search by name instead.");
+  }
+  // iOS needs the click to come straight from a user gesture on the input.
+  $("take").onclick = () => $("cam").click();
+  $("pick").onclick = () => $("lib").click();
+  $("cam").onchange = $("lib").onchange = (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) scan(f); };
+
+  function setStatus(t, err) { $("status").className = "status" + (err ? " err" : ""); $("status").textContent = t; }
+
+  let busy = false;
+  async function scan(file) {
+    if (busy) return;
+    busy = true;
+    $("take").disabled = $("pick").disabled = true;
+    $("shot").hidden = false;
+    $("shot-img").src = URL.createObjectURL(file);
+    $("shot-text").textContent = "Reading the card…";
+    setStatus("");
+    const st = $("status"); st.replaceChildren(); const sp = document.createElement("span"); sp.className = "spin"; st.append(sp, " Identifying card (usually 5–20 seconds)");
+    try {
+      const g = await sample.json(
+        "The image is a photo of a trading card someone wants to price. Identify it.\n" +
+        "Reply with only this JSON object:\n" +
+        '{"is_pokemon_card": true, "name": "card name exactly as printed, e.g. Charizard ex", ' +
+        '"number": "collector number as printed in a bottom corner, e.g. 199/165, 025/198, SWSH050 or SV-P 085; null if unreadable", ' +
+        '"set": "your best guess at the English set name, e.g. Scarlet & Violet 151; null if unsure", ' +
+        '"finish": "Holofoil, Reverse Holofoil, Normal, or null if unclear", ' +
+        '"first_edition": false, "language": "English", "note": "under 15 words on anything that affects value, e.g. visible damage"}',
+        { images: file });
+      onGuess(g || {});
+    } catch (e) {
+      $("shot-text").textContent = "";
+      const msg = {
+        not_granted: "Card recognition needs your permission to use Claude. Search by name instead.",
+        sampling_disabled: "Card recognition isn't available on this account. Search by name instead.",
+        images_unavailable: "Photo scanning isn't available here. Search by name instead.",
+        rate_limited: "Too many scans right now. Wait a minute and try again.",
+        image_rejected: "That photo couldn't be read. Try a different, well-lit photo.",
+        invalid_json: "Couldn't read the card. Try a closer, sharper photo.",
+      }[e?.code] || "Something went wrong reading the card. Try again.";
+      setStatus(msg, true);
+      if (["not_granted", "sampling_disabled", "images_unavailable"].includes(e?.code)) imgOK = false;
+    } finally {
+      busy = false;
+      refreshPhotoButtons();
+    }
+  }
+
+  function onGuess(g) {
+    setStatus("");
+    if (g.is_pokemon_card === false) { $("shot-text").textContent = "That doesn't look like a Pokémon card."; return; }
+    $("shot-text").replaceChildren();
+    const b = document.createElement("b"); b.textContent = g.name || "Unknown card";
+    $("shot-text").append(b, document.createTextNode([g.number && " · " + g.number, g.set && " · " + g.set, g.language && g.language !== "English" ? " · " + g.language : ""].filter(Boolean).join("")));
+    if (g.note) { $("shot-text").append(document.createElement("br"), document.createTextNode(g.note)); }
+    if (g.language && !/english/i.test(g.language)) setStatus("Prices here are for English cards; a " + g.language + " card can sell for quite a different price.");
+    const ranked = rank(g);
+    showCands(ranked.slice(0, 6), "Closest matches");
+    if (ranked.length) choose(ranked[0], g);
+    else setStatus("No match found. Try searching by name below.", true);
+  }
+
+  function rank(g) {
+    const nt = tokens(g.name), np = g.number ? numParts(g.number) : null, stt = tokens(g.set);
+    const base = norm(g.name);
+    const out = [];
+    for (const c of cards) {
+      let s = 0;
+      const overlap = nt.filter((t) => c.nameTok.includes(t)).length;
+      if (overlap) s += overlap * 12 + (norm(c.name).startsWith(base) ? 25 : 0) + (norm(c.name) === base ? 15 : 0);
+      if (np && np.n && c.n === np.n) s += 40;
+      if (np && np.total && c.total === np.total) s += 20;
+      if (stt.length) s += Math.min(24, stt.filter((t) => c.setTok.includes(t)).length * 6);
+      if (overlap && s >= 30) out.push({ c, s });
+    }
+    return out.sort((a, b) => b.s - a.s || b.c.vars[0].price - a.c.vars[0].price).map((x) => x.c);
+  }
+
+  // ---------- search ----------
+  let qt;
+  $("q").addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(search, 150); });
+  function search() {
+    const qs = tokens($("q").value);
+    if (!qs.length || !data) { if (!qs.length) $("cands").replaceChildren(); return; }
+    const hits = [];
+    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 400) break; }
+    hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
+    showCands(hits.slice(0, 20), hits.length ? null : "No cards match that search.");
+  }
+
+  function showCands(list, heading) {
+    const box = $("cands"); box.replaceChildren();
+    if (heading) { const h = document.createElement("div"); h.className = "lbl"; h.textContent = heading; box.append(h); }
+    for (const c of list) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "cand"; b.dataset.id = c.id;
+      b.setAttribute("aria-pressed", sel === c ? "true" : "false");
+      const n = document.createElement("span"); n.className = "n"; n.textContent = c.name;
+      const s = document.createElement("span"); s.className = "s"; s.textContent = `${c.set} · ${c.number}${c.vars.length > 1 ? " · " + c.vars.length + " versions" : ""}`;
+      const p = document.createElement("span"); p.className = "p"; p.textContent = money(c.vars[0].price);
+      b.append(n, p, s);
+      b.onclick = () => choose(c);
+      box.append(b);
+    }
+  }
+
+  // ---------- result ----------
+  function choose(c, g) {
+    sel = c;
+    selVar = 0;
+    if (g) {
+      const want = g.first_edition ? "1st edition" : norm(g.finish);
+      let i = c.vars.findIndex((v) => want && norm(v.variant) === want);
+      if (i < 0) i = c.vars.findIndex((v) => want && norm(v.variant).includes(want));
+      if (i >= 0) selVar = i;
+    }
+    for (const b of document.querySelectorAll(".cand")) b.setAttribute("aria-pressed", String(+b.dataset.id === c.id));
+    $("result").hidden = false;
+    $("r-name").textContent = c.name;
+    $("r-meta").textContent = [c.set, c.number, c.rarity].filter(Boolean).join(" · ");
+    $("r-link").href = "https://www.tcgplayer.com/product/" + c.id;
+    const vb = $("r-vars"); vb.replaceChildren();
+    c.vars.forEach((v, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "var";
+      b.textContent = v.variant; b.setAttribute("aria-pressed", String(i === selVar));
+      b.onclick = () => { selVar = i; for (const x of vb.children) x.setAttribute("aria-pressed", String(x === b)); render(); };
+      vb.append(b);
+    });
+    vb.hidden = c.vars.length < 2;
+    render();
+    if (g) $("result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+
+  $("ask").addEventListener("input", () => sel && render());
+
+  function render() {
+    const v = sel.vars[selVar];
+    const m = v.price;
+    $("s-market").textContent = money(m);
+    $("s-low").textContent = money(v.low);
+    $("s-p7").textContent = money(v.p7);
+    $("s-p30").textContent = money(v.p30);
+    const ch = (old, el) => { el.className = ""; if (old) { const c = (m - old) / old * 100; el.textContent = pct(c) + " since"; el.className = c >= 0.5 ? "up" : c <= -0.5 ? "down" : ""; } else el.textContent = "No data"; };
+    ch(v.p7, $("s-c7")); ch(v.p30, $("s-c30"));
+
+    const ref = v.p30 ?? v.p7;
+    const trend = ref ? (m - ref) / ref * 100 : null;
+    const trendLine = trend == null ? "" :
+      trend >= 25 ? ` Its price has jumped ${pct(trend)} in the last month, so it may be riding a short-term spike.` :
+      trend <= -25 ? ` Its price has fallen ${pct(trend).replace("-", "")} in the last month, so it may be in a dip.` :
+      ` Its price has been steady over the last month (${pct(trend)}).`;
+
+    const ask = parseFloat($("ask").value);
+    const V = $("verdict");
+    if (ask > 0) {
+      const d = (ask - m) / m * 100;
+      const kind = d <= -15 ? "good" : d >= 15 ? "bad" : "fair";
+      V.className = "verdict " + kind;
+      $("v-head").textContent = kind === "good" ? "Undervalued: good deal" : kind === "bad" ? "Overvalued" : "Fair price";
+      $("v-body").textContent = `${money(ask)} is ${Math.abs(Math.round(d))}% ${d < 0 ? "below" : "above"} the ${money(m)} market price.` +
+        (v.low && ask > v.low * 1.05 ? ` The cheapest copy online is ${money(v.low)}.` : "") + trendLine;
+      $("gauge-wrap").hidden = false;
+      $("g-dot").style.left = Math.max(0, Math.min(100, 50 + d)) + "%";
+    } else {
+      $("gauge-wrap").hidden = true;
+      if (trend == null) {
+        V.className = "verdict none";
+        $("v-head").textContent = "Market price " + money(m);
+        $("v-body").textContent = "Enter an asking price to see if it's a good deal.";
+      } else {
+        const kind = trend >= 25 ? "bad" : trend <= -25 ? "good" : "fair";
+        V.className = "verdict " + kind;
+        $("v-head").textContent = kind === "bad" ? "Possibly overvalued right now" : kind === "good" ? "Possibly undervalued right now" : "Fairly valued";
+        $("v-body").textContent = `Market price is ${money(m)}.` + trendLine + " Enter an asking price to judge a specific offer.";
+      }
+    }
+  }
+})();
+</script>

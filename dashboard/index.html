@@ -1,0 +1,220 @@
+<meta name="dash-one-writer">
+<style>
+  .pm { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+  .pm h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+  .pm h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+  .pm-lede { margin: var(--cds-gap-sm) 0 0; color: var(--color-fg-muted); max-width: 68ch; line-height: 1.5; }
+  .pm-lede b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; }
+  .pm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-md); }
+  .pm-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+  .pm-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .pm-tile-value { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .pm-tile-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .pm-up { color: var(--color-ok); }
+  .pm-down { color: var(--color-bad); }
+  .pm-sec { display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+  .pm-sec > p { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); max-width: 70ch; }
+  .pm-chart { position: relative; min-height: 260px; }
+  .pm-chart svg text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .pm-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); max-width: 260px; z-index: 2; }
+  .pm-tip strong { display: block; color: var(--color-fg); }
+  .pm-tip span { color: var(--cds-text-secondary); }
+  .pm-scroll { overflow-x: auto; }
+  .pm-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); }
+  .pm-table th { text-align: right; font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .pm-table th:first-child, .pm-table td:first-child { text-align: left; }
+  .pm-table td { text-align: right; padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); font-variant-numeric: tabular-nums; white-space: nowrap; vertical-align: top; }
+  .pm-table td:first-child { white-space: normal; min-width: 180px; }
+  .pm-card a { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); text-decoration: none; }
+  .pm-card a:hover, .pm-card a:focus-visible { text-decoration: underline; }
+  .pm-card small { display: block; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .pm-empty { color: var(--color-fg-muted); padding: var(--cds-pad-md) 0; }
+  .pm details { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .pm details p { max-width: 70ch; line-height: 1.5; }
+</style>
+
+<div class="pm">
+  <header id="overview">
+    <h1>Pokémon Price Movers</h1>
+    <p class="pm-lede">TCGplayer market prices as of <b data-draw="asof" data-source="summary" data-field="asof" data-row="0">—</b>: <b data-draw="nspikes" data-source="summary" data-field="spikes" data-row="0">—</b> singles spiked and <b data-draw="ndrops" data-source="summary" data-field="drops" data-row="0">—</b> dropped sharply, out of <b data-draw="ntracked" data-source="summary" data-field="tracked" data-row="0">—</b> tracked.</p>
+  </header>
+
+  <div class="pm-tiles">
+    <div class="pm-tile" id="tile-spikes">
+      <span class="pm-tile-label">Spikes</span>
+      <span class="pm-tile-value pm-up" data-draw="tspikes" data-source="summary" data-field="spikes" data-row="0">—</span>
+      <span class="pm-tile-note">Up <span data-draw="dpct">—</span>+ in a day or <span data-draw="wpct">—</span>+ in a week</span>
+    </div>
+    <div class="pm-tile" id="tile-drops">
+      <span class="pm-tile-label">Drops</span>
+      <span class="pm-tile-value pm-down" data-draw="tdrops" data-source="summary" data-field="drops" data-row="0">—</span>
+      <span class="pm-tile-note">Same thresholds, downward</span>
+    </div>
+    <div class="pm-tile" id="tile-thin">
+      <span class="pm-tile-label">Ignored as noise</span>
+      <span class="pm-tile-value" data-draw="tthin" data-source="summary" data-field="unconfirmed" data-row="0">—</span>
+      <span class="pm-tile-note">Big moves that current listings don't back up</span>
+    </div>
+    <div class="pm-tile" id="tile-tracked">
+      <span class="pm-tile-label">Singles tracked</span>
+      <span class="pm-tile-value" data-draw="ttracked" data-source="summary" data-field="tracked" data-row="0">—</span>
+      <span class="pm-tile-note">Every English Pokémon single with a market price</span>
+    </div>
+  </div>
+
+  <section class="pm-sec" id="chart-section">
+    <h2>Biggest confirmed moves this week</h2>
+    <p>Change in market price over 7 days for the 10 largest spikes and 10 largest drops. Hover or tap a bar for the card.</p>
+    <div class="pm-chart" id="moves-chart" data-draw="chart" data-source="movers"></div>
+  </section>
+
+  <section class="pm-sec" id="spikes">
+    <h2>Spikes</h2>
+    <p>Sorted by size of move. The lowest listing is the cheapest copy for sale right now; it has risen too, which is why the spike counts as real.</p>
+    <div class="pm-scroll">
+      <table class="pm-table" data-source="movers" data-row-key="key">
+        <thead><tr><th data-field="name">Card</th><th data-field="price">Market</th><th data-field="c1">1 day</th><th data-field="c7">7 days</th><th data-field="p7">Week ago</th><th data-field="low">Lowest listing</th></tr></thead>
+        <tbody data-draw="spikes-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="pm-sec" id="drops">
+    <h2>Drops</h2>
+    <p>Sorted by size of move. Listings have fallen along with the market price.</p>
+    <div class="pm-scroll">
+      <table class="pm-table" data-source="movers" data-row-key="key">
+        <thead><tr><th data-field="name">Card</th><th data-field="price">Market</th><th data-field="c1">1 day</th><th data-field="c7">7 days</th><th data-field="p7">Week ago</th><th data-field="low">Lowest listing</th></tr></thead>
+        <tbody data-draw="drops-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details id="how-it-works">
+    <summary>How a move gets flagged</summary>
+    <p>Each day's TCGplayer market price (roughly, what recent sales went for) is compared with the day before and the week before. A card is flagged when it moves at least <span data-draw="dpct2">—</span> in a day or <span data-draw="wpct2">—</span> in a week, the change is at least <span data-draw="minch">—</span>, and the card is worth at least <span data-draw="minpr">—</span>.</p>
+    <p>One unusual sale can swing the market price of a rarely traded card, so a flagged move must also show in current listings: for a spike, the cheapest listing has to sit above last week's price; for a drop, below it. Listings priced at more than twice or less than half the market price are treated as outliers.</p>
+    <p>English cards only. Prices come from TCGplayer's daily data, mirrored by tcgcsv.com.</p>
+  </details>
+</div>
+
+<script>
+(function () {
+  const money = d3.format('$,.2f');
+  const pct = (v) => (v == null ? '—' : (v > 0 ? '+' : '') + d3.format(',.1f')(v) + '%');
+  const S = () => dash.data('summary');
+  const one = (field, f) => (el) => {
+    const s = S();
+    el.textContent = s.status === 'ok' && s.data[0] ? (f ? f(s.data[0][field]) : s.data[0][field]) : '—';
+  };
+  const int = d3.format(',');
+  dash.draw('asof', one('asof', (v) => d3.utcFormat('%b %-d, %Y')(new Date(v))));
+  dash.draw('nspikes', one('spikes', int));
+  dash.draw('ndrops', one('drops', int));
+  dash.draw('ntracked', one('tracked', int));
+  dash.draw('tspikes', one('spikes', int));
+  dash.draw('tdrops', one('drops', int));
+  dash.draw('tthin', one('unconfirmed', int));
+  dash.draw('ttracked', one('tracked', int));
+  const p0 = (v) => v + '%';
+  dash.draw('dpct', one('day_pct', p0));
+  dash.draw('wpct', one('week_pct', p0));
+  dash.draw('dpct2', one('day_pct', p0));
+  dash.draw('wpct2', one('week_pct', p0));
+  dash.draw('minch', one('min_change', money));
+  dash.draw('minpr', one('min_price', money));
+
+  function body(list) {
+    return (tb) => {
+      const m = dash.data('movers');
+      if (m.status !== 'ok') { tb.replaceChildren(); return; }
+      const rows = m.data.filter((r) => r.list === list).sort((a, b) => a.rank - b.rank);
+      const trs = d3.select(tb).selectAll('tr').data(rows, (r) => r.key)
+        .join((enter) => {
+          const tr = enter.append('tr');
+          const c = tr.append('td').attr('class', 'pm-card');
+          c.append('a').attr('target', '_blank').attr('rel', 'noopener');
+          c.append('small');
+          for (let i = 0; i < 5; i++) tr.append('td');
+          return tr;
+        });
+      trs.attr('data-key', (r) => r.key);
+      trs.select('a').attr('href', (r) => r.url).text((r) => r.name);
+      trs.select('small').text((r) => `${r.set} · ${r.number} · ${r.variant}`);
+      trs.each(function (r) {
+        const td = this.querySelectorAll('td');
+        td[1].textContent = money(r.price);
+        td[2].textContent = pct(r.c1);
+        td[2].className = r.c1 > 0 ? 'pm-up' : r.c1 < 0 ? 'pm-down' : '';
+        td[3].textContent = pct(r.c7);
+        td[3].className = r.c7 > 0 ? 'pm-up' : r.c7 < 0 ? 'pm-down' : '';
+        td[4].textContent = r.p7 == null ? '—' : money(r.p7);
+        td[5].textContent = r.low == null ? '—' : money(r.low);
+      });
+      if (!rows.length) {
+        tb.replaceChildren();
+        const tr = tb.insertRow(); const td = tr.insertCell();
+        td.colSpan = 6; td.className = 'pm-empty';
+        td.textContent = list === 'spike' ? 'No confirmed spikes today.' : 'No confirmed drops today.';
+      }
+    };
+  }
+  dash.draw('spikes-body', body('spike'));
+  dash.draw('drops-body', body('drop'));
+
+  dash.draw('chart', (el) => {
+    const m = dash.data('movers');
+    if (m.status !== 'ok') { el.textContent = m.status === 'error' ? 'Failed to load' : '—'; return; }
+    const pick = (list, n) => m.data.filter((r) => r.list === list && r.c7 != null)
+      .sort((a, b) => Math.abs(b.c7) - Math.abs(a.c7)).slice(0, n);
+    const rows = [...pick('spike', 10), ...pick('drop', 10)].sort((a, b) => b.c7 - a.c7);
+    el.replaceChildren();
+    if (!rows.length) { el.textContent = 'No confirmed moves this week.'; return; }
+    const W = el.clientWidth || 600, rowH = 22, narrow = W < 520;
+    const label = (r) => { const t = r.name.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+-\s+.*$/, '').trim(); return t.length > (narrow ? 18 : 30) ? t.slice(0, narrow ? 17 : 29) + '…' : t; };
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('role', 'img')
+      .attr('aria-label', '7-day percentage change for the largest confirmed spikes and drops');
+    // measure label width
+    const probe = svg.append('text').attr('class', 'probe');
+    let lw = 0; rows.forEach((r) => { probe.text(label(r)); lw = Math.max(lw, probe.node().getComputedTextLength()); });
+    probe.remove();
+    const left = Math.ceil(lw) + 12, right = 52, top = 22, H = top + rows.length * rowH + 4;
+    svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const ext = d3.extent([0, ...rows.map((r) => r.c7)]);
+    const x = d3.scaleLinear().domain(ext).nice().range([left, W - right]);
+    const y = d3.scaleBand().domain(rows.map((r) => r.key)).range([top, H - 4]).padding(0.25);
+    svg.append('g').attr('transform', `translate(0,${top - 6})`)
+      .call(d3.axisTop(x).ticks(narrow ? 3 : 6).tickFormat((v) => (v > 0 ? '+' : '') + v + '%').tickSize(0))
+      .call((g) => g.select('.domain').remove());
+    svg.append('g').selectAll('line').data(x.ticks(narrow ? 3 : 6)).join('line')
+      .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', top).attr('y2', H - 4)
+      .style('stroke', (d) => (d === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)'));
+    const g = svg.append('g').selectAll('g').data(rows).join('g');
+    g.append('rect').attr('x', (r) => Math.min(x(0), x(r.c7))).attr('y', (r) => y(r.key))
+      .attr('width', (r) => Math.max(1, Math.abs(x(r.c7) - x(0)))).attr('height', y.bandwidth()).attr('rx', 2)
+      .style('fill', (r) => (r.c7 >= 0 ? 'var(--color-ok)' : 'var(--color-bad)'));
+    g.append('text').attr('x', left - 8).attr('y', (r) => y(r.key) + y.bandwidth() / 2).attr('dy', '0.35em')
+      .attr('text-anchor', 'end').text(label);
+    g.append('text').attr('x', (r) => (r.c7 >= 0 ? x(r.c7) + 4 : x(0) + 4)).attr('y', (r) => y(r.key) + y.bandwidth() / 2)
+      .attr('dy', '0.35em').text((r) => pct(r.c7).replace('.0%', '%'))
+      .each(function (r) { if (r.c7 < 0) d3.select(this).attr('x', x(r.c7) - 4).attr('text-anchor', 'end'); });
+    // tooltip
+    const tip = d3.select(el).append('div').attr('class', 'pm-tip').attr('hidden', '');
+    const show = (ev, r) => {
+      tip.attr('hidden', null).selectAll('*').remove();
+      tip.append('strong').text(r.name);
+      tip.append('span').text(`${r.set} ${r.number} · ${r.variant}`);
+      tip.append('div').text(`${money(r.p7)} → ${money(r.price)} (${pct(r.c7)})`);
+      tip.append('span').text(`Lowest listing ${r.low == null ? '—' : money(r.low)}`);
+      const [px, py] = d3.pointer(ev, el);
+      const tw = tip.node().offsetWidth;
+      tip.style('left', Math.max(0, Math.min(px + 12, W - tw)) + 'px').style('top', (py + 14) + 'px');
+    };
+    g.style('cursor', 'pointer')
+      .on('pointerenter pointermove', show)
+      .on('pointerleave', () => tip.attr('hidden', ''));
+    g.append('rect').attr('x', 0).attr('y', (r) => y(r.key)).attr('width', W).attr('height', y.bandwidth())
+      .style('fill', 'transparent');
+  });
+})();
+</script>
