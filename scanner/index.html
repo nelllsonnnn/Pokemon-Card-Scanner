@@ -82,6 +82,23 @@ input[type="search"], input[type="number"] { width: 100%; font: 400 1rem var(--f
 .money.pct input { padding-left: 14px; padding-right: 30px; }
 .money.pct span { left: auto; right: 14px; }
 .payout { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--good-bg); color: var(--good); font: 700 1.2rem var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+input[type="text"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 48px; }
+.payout.loss { background: var(--bad-bg); color: var(--bad); }
+.payout.flat { background: var(--bg); color: var(--muted); }
+.txs { display: grid; gap: 8px; }
+.tx { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.tx-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tx-top b { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.tx-top time { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.tx-nums { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tx-nums b { color: var(--fg); font-weight: 600; }
+.tx-nums b.up { color: var(--good); } .tx-nums b.down { color: var(--bad); }
+.tx-act { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tx-act input[type="number"] { width: 8rem; min-height: 36px; padding: 6px 10px; border-radius: 8px; }
+.mini { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 6px 12px; font: 500 .85rem var(--font-body); min-height: 36px; cursor: pointer; }
+.mini.danger { color: var(--bad); border-color: var(--bad); }
+.mini:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--accent); color: var(--accent-fg); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -165,6 +182,43 @@ a { color: var(--accent); }
       </div>
     </div>
     <p class="foot" id="c-note">Payout is what to pay for the card: market price &times; buy %.</p>
+  </section>
+
+  <section class="panel" id="profit" aria-labelledby="profit-h">
+    <label class="lbl" id="profit-h">Profit</label>
+    <div class="field">
+      <label class="lbl" for="p-card">Card</label>
+      <input id="p-card" type="text" placeholder="Scan or search a card, or type a name" autocomplete="off">
+    </div>
+    <div class="calc">
+      <div class="field">
+        <label class="lbl" for="p-paid">I paid</label>
+        <div class="money"><span>$</span><input id="p-paid" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="p-sold">Sold for</label>
+        <div class="money"><span>$</span><input id="p-sold" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Not sold yet"></div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="p-profit">I make</label>
+        <output class="payout flat" id="p-profit" for="p-paid p-sold" aria-live="polite">&mdash;</output>
+      </div>
+    </div>
+    <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
+    <div class="status" id="p-msg" role="status"></div>
+    <p class="foot">Not sold yet? Leave &ldquo;Sold for&rdquo; empty and record it now; mark it sold later in your transactions.</p>
+  </section>
+
+  <section class="panel" id="history" aria-labelledby="tx-h">
+    <label class="lbl" id="tx-h">My transactions</label>
+    <div class="stats">
+      <div class="stat"><span>Total profit</span><b id="t-profit">$0.00</b><small id="t-deals">0 sold</small></div>
+      <div class="stat"><span>Total sold</span><b id="t-sold">$0.00</b><small>From sold cards</small></div>
+      <div class="stat"><span>Total paid</span><b id="t-paid">$0.00</b><small>All cards bought</small></div>
+      <div class="stat"><span>Still holding</span><b id="t-hold">$0.00</b><small id="t-holdn">0 cards</small></div>
+    </div>
+    <p class="foot" id="tx-state">Loading your transactions&hellip;</p>
+    <div class="txs" id="tx-list"></div>
   </section>
 
   <p class="foot">Prices are TCGplayer market prices for English cards in Near Mint condition, refreshed daily. Played or damaged cards sell for less. A good deal is 15% or more under market; overpriced is 15% or more over.</p>
@@ -361,16 +415,133 @@ a { color: var(--accent); }
   function calc() {
     const m = parseFloat($("c-market").value), p = parseFloat($("c-pct").value);
     $("c-pay").textContent = m > 0 && p >= 0 ? money(m * p / 100) : "$0.00";
+    syncPaid();
   }
   $("c-market").addEventListener("input", calc);
   $("c-pct").addEventListener("input", () => { try { localStorage.setItem("buyPct", $("c-pct").value); } catch {} calc(); });
+  // ---------- profit ----------
+  let paidEdited = false;
+  function syncPaid() {
+    if (!paidEdited) {
+      const m = parseFloat($("c-market").value), p = parseFloat($("c-pct").value);
+      $("p-paid").value = m > 0 && p >= 0 ? (Math.round(m * p) / 100).toFixed(2) : "";
+    }
+    profit();
+  }
+  function profit() {
+    const paid = parseFloat($("p-paid").value), sold = parseFloat($("p-sold").value), out = $("p-profit");
+    if (paid >= 0 && sold >= 0) {
+      const d = sold - paid;
+      out.textContent = (d < 0 ? "−" : "+") + money(Math.abs(d)) + (paid > 0 ? " (" + pct(d / paid * 100) + ")" : "");
+      out.className = "payout" + (d < 0 ? " loss" : "");
+    } else { out.textContent = "—"; out.className = "payout flat"; }
+  }
+  $("p-paid").addEventListener("input", () => { paidEdited = $("p-paid").value !== ""; profit(); });
+  $("p-sold").addEventListener("input", profit);
   calc();
+
+  // ---------- transactions (saved privately to the viewer's Claude account) ----------
+  let txCol = null;
+  const pmsg = (t, err) => { $("p-msg").className = "status" + (err ? " err" : ""); $("p-msg").textContent = t; };
+  function txUnavailable() {
+    txCol = null;
+    $("p-save").disabled = true;
+    $("tx-state").textContent = "Sign in to Claude to record and see your transactions.";
+  }
+  (async () => {
+    try {
+      const [db, user] = await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user")]);
+      const uid = db && user ? await user.id() : null;
+      if (!uid) return txUnavailable();
+      txCol = db.doc("data/users/" + uid + "/flips").collection("tx");
+      txCol.orderBy("at", "desc").onSnapshot((s) => renderTx(s.docs), () => txUnavailable());
+      $("p-save").disabled = false;
+    } catch { txUnavailable(); }
+  })();
+
+  $("p-save").onclick = async () => {
+    if (!txCol) return;
+    const paid = parseFloat($("p-paid").value), soldRaw = $("p-sold").value, sold = parseFloat(soldRaw);
+    if (!(paid >= 0)) { pmsg("Enter what you paid first.", true); return; }
+    const doc = {
+      card: $("p-card").value.trim().slice(0, 200) || "Unnamed card",
+      paid, sold: soldRaw === "" || !(sold >= 0) ? null : sold,
+      market: parseFloat($("c-market").value) || null, cardId: sel ? sel.id : null, at: Date.now(),
+    };
+    $("p-save").disabled = true;
+    try {
+      await txCol.add(doc);
+      pmsg(doc.sold == null ? "Recorded as still holding." : "Transaction recorded.");
+      $("p-sold").value = ""; profit();
+    } catch (e) {
+      pmsg(e?.code === "quota_exceeded" ? "Storage is full. Delete some old transactions first." : "Couldn't save that. Try again.", true);
+    } finally { $("p-save").disabled = !txCol; }
+  };
+
+  function renderTx(docs) {
+    let paidT = 0, soldT = 0, profitT = 0, nSold = 0, holdT = 0, nHold = 0;
+    const list = $("tx-list"); list.replaceChildren();
+    for (const d of docs) {
+      const t = d.data(); if (!t) continue;
+      const paid = +t.paid || 0, sold = t.sold == null ? null : +t.sold;
+      paidT += paid;
+      if (sold == null) { holdT += paid; nHold++; } else { soldT += sold; profitT += sold - paid; nSold++; }
+      const row = document.createElement("div"); row.className = "tx";
+      const top = document.createElement("div"); top.className = "tx-top";
+      const name = document.createElement("b"); name.textContent = String(t.card || "Unnamed card");
+      const when = document.createElement("time"); when.textContent = new Date(+t.at || 0).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      top.append(name, when);
+      const nums = document.createElement("div"); nums.className = "tx-nums";
+      const item = (label, val, cls) => { const s = document.createElement("span"); const b = document.createElement("b"); b.textContent = val; if (cls) b.className = cls; s.append(label + " ", b); nums.append(s); };
+      item("Paid", money(paid));
+      if (sold == null) { const bdg = document.createElement("span"); bdg.className = "badge"; bdg.textContent = "Holding"; nums.append(bdg); }
+      else { const p = sold - paid; item("Sold", money(sold)); item("Made", (p < 0 ? "−" : "+") + money(Math.abs(p)), p < 0 ? "down" : "up"); }
+      const act = document.createElement("div"); act.className = "tx-act";
+      if (sold == null) {
+        const mark = document.createElement("button"); mark.type = "button"; mark.className = "mini"; mark.textContent = "Mark sold";
+        mark.onclick = () => {
+          const inp = document.createElement("input"); inp.type = "number"; inp.inputMode = "decimal"; inp.min = "0"; inp.step = "0.01"; inp.placeholder = "Sold for $"; inp.setAttribute("aria-label", "Sold for");
+          const save = document.createElement("button"); save.type = "button"; save.className = "mini"; save.textContent = "Save";
+          save.onclick = async () => {
+            const v = parseFloat(inp.value); if (!(v >= 0)) { inp.focus(); return; }
+            save.disabled = true;
+            try { await txCol.doc(d.id).update({ sold: v, soldAt: Date.now() }); } catch { save.disabled = false; save.textContent = "Retry"; }
+          };
+          act.replaceChildren(inp, save); inp.focus();
+        };
+        act.append(mark);
+      }
+      const del = document.createElement("button"); del.type = "button"; del.className = "mini danger"; del.textContent = "Delete";
+      let armed = null;
+      del.onclick = async () => {
+        if (!armed) { del.textContent = "Tap again to delete"; armed = setTimeout(() => { armed = null; del.textContent = "Delete"; }, 4000); return; }
+        clearTimeout(armed); del.disabled = true;
+        try { await txCol.doc(d.id).delete(); } catch { del.disabled = false; del.textContent = "Delete"; armed = null; }
+      };
+      act.append(del);
+      row.append(top, nums, act); list.append(row);
+    }
+    $("t-profit").textContent = (profitT < 0 ? "−" : "") + money(Math.abs(profitT));
+    $("t-profit").className = profitT > 0 ? "up" : profitT < 0 ? "down" : "";
+    $("t-deals").textContent = nSold + " sold";
+    $("t-sold").textContent = money(soldT);
+    $("t-paid").textContent = money(paidT);
+    $("t-hold").textContent = money(holdT);
+    $("t-holdn").textContent = nHold + (nHold === 1 ? " card" : " cards");
+    $("tx-state").textContent = docs.length ? "" : "No transactions yet. Fill in the profit boxes and tap Record transaction.";
+    $("tx-state").hidden = !!docs.length;
+  }
 
   function render() {
     const v = sel.vars[selVar];
     const m = v.price;
     const key = sel.id + "|" + selVar;
-    if (key !== calcKey) { calcKey = key; $("c-market").value = m.toFixed(2); calc(); }
+    if (key !== calcKey) {
+      calcKey = key;
+      $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
+      paidEdited = false; $("p-sold").value = ""; pmsg("");
+      $("c-market").value = m.toFixed(2); calc();
+    }
     $("s-market").textContent = money(m);
     $("s-low").textContent = money(v.low);
     $("s-p7").textContent = money(v.p7);
