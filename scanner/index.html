@@ -292,7 +292,7 @@ a { color: var(--accent); }
       <p class="foot" id="p-note">Type in any two boxes and the third works itself out (shown in green).</p>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
-      <p class="foot">Not sold yet? Leave &ldquo;Sold for&rdquo; empty and record it now; mark it sold later in Transactions.</p>
+      <p class="foot">&ldquo;Sold for&rdquo; starts at the payout. Not sold yet? Clear &ldquo;Sold for&rdquo; and record it now; mark it sold later in Transactions.</p>
     </section>
   </div>
 
@@ -571,16 +571,17 @@ a { color: var(--accent); }
   });
 
   // ---------- profit ----------
-  let paidEdited = false;
+  // Sold for follows Payout until you type your own Sold for; I paid is always yours to enter.
+  let soldEdited = false;
   function syncPaid() {
-    if (!paidEdited) { $("p-paid").value = $("c-pay").value; recentB = touch(recentB, "p-paid"); }
+    if (!soldEdited) { $("p-sold").value = $("c-pay").value; recentB = touch(recentB, "p-sold"); }
     solveB();
   }
   function solveB() {
     const t = targetOf(B, recentB), paid = num("p-paid"), sold = num("p-sold"), mk = num("p-profit");
     if (t === "p-profit") $("p-profit").value = paid >= 0 && sold >= 0 ? fix(sold - paid) : "";
-    else if (t === "p-sold") $("p-sold").value = paid >= 0 && !isNaN(mk) ? fix(paid + mk) : "";
-    else { $("p-paid").value = sold >= 0 && !isNaN(mk) ? fix(sold - mk) : ""; paidEdited = $("p-paid").value !== ""; }
+    else if (t === "p-sold") { $("p-sold").value = paid >= 0 && !isNaN(mk) ? fix(paid + mk) : ""; soldEdited = $("p-sold").value !== ""; }
+    else $("p-paid").value = sold >= 0 && !isNaN(mk) ? fix(sold - mk) : "";
     for (const id of ["p-paid", "p-sold"]) $(id).parentElement.classList.toggle("good", id === t);
     const d = num("p-profit"), pd = num("p-paid"), box = $("p-profit-box");
     box.classList.toggle("good", !isNaN(d) && d >= 0);
@@ -590,10 +591,13 @@ a { color: var(--accent); }
       : HINT;
   }
   for (const id of B) $(id).addEventListener("input", () => {
-    if (id === "p-paid") paidEdited = $("p-paid").value !== "";
+    if (id === "p-sold") soldEdited = $("p-sold").value !== "";
     recentB = touch(recentB, id); solveB();
   });
-  function resetProfit() { recentB = ["p-sold", "p-paid"]; $("p-sold").value = ""; solveB(); }
+  function resetProfit() {
+    recentB = ["p-sold", "p-paid"]; soldEdited = false;
+    $("p-paid").value = ""; $("p-profit").value = ""; syncPaid();
+  }
   solveA();
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
@@ -924,8 +928,8 @@ a { color: var(--accent); }
     if (key !== calcKey) {
       calcKey = key;
       $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
-      paidEdited = false; pmsg(""); aiReset(); clearPhoto();
-      recentB = ["p-sold", "p-paid"]; $("p-sold").value = "";
+      soldEdited = false; pmsg(""); aiReset(); clearPhoto();
+      recentB = ["p-sold", "p-paid"]; $("p-paid").value = ""; $("p-profit").value = "";
       $("c-market").value = m.toFixed(2); calc();
     }
     $("s-market").textContent = money(m);
