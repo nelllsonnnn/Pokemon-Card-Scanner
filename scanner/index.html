@@ -1640,13 +1640,14 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     name: ["name", "cardname", "card", "productname", "product", "title", "cardtitle"],
     set: ["set", "setname", "expansion", "series"],
     number: ["number", "cardnumber", "collectornumber", "num", "cardnum", "setnumber", "numberinset", "cardnumberinset"],
-    variant: ["variant", "printing", "finish", "foil", "version", "subtype"],
+    variant: ["variant", "variation", "printing", "finish", "foil", "version", "subtype"],
     cond: ["condition", "cond"],
     qty: ["quantity", "qty", "count", "totalquantity", "amount", "copies"],
-    cost: ["cost", "costeach", "unitcost", "paid", "pricepaid", "purchaseprice", "buyprice", "averagecostpaid", "costbasis"],
+    cost: ["cost", "costeach", "unitcost", "paid", "pricepaid", "purchaseprice", "buyprice", "averagecostpaid", "costbasis", "acquisitionprice", "acquisitioncost", "purchasecost"],
     tag: ["sticker", "stickerprice", "currentsticker", "tag", "tagprice", "listprice", "askingprice", "sellprice", "sellingprice"],
     custom: ["myprice", "yourprice", "fixedprice", "customprice"],
     market: ["market", "marketprice", "tcgmarketprice", "marketvalue"],
+    lang: ["language", "lang"],
   };
   let impRows = [], impFilter = "all", byNum = null;
   $("iv-import").onclick = () => { const p = $("iv-imp"); p.hidden = !p.hidden; if (!p.hidden) p.scrollIntoView({ block: "start" }); };
@@ -1754,7 +1755,8 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     for (const [k, names] of Object.entries(IMP_COLS)) { const i = head.findIndex((h, j) => !used.has(j) && names.includes(h)); if (i >= 0) { col[k] = i; used.add(i); } }
     if (col.name == null) { impMsg("Couldn't find a Name column. Add a header called Name (or Card / Product Name).", true); return; }
     const ignored = rows[0].filter((_, j) => !used.has(j) && rows[0][j].trim()).map((h) => h.trim());
-    const get = (row, k) => (col[k] != null ? String(row[col[k]] ?? "").trim() : "");
+    // some apps (e.g. Collectr) wrap every value in extra quotes: """094/086""" -> 094/086
+    const get = (row, k) => (col[k] != null ? String(row[col[k]] ?? "").trim().replace(/^"+|"+$/g, "").trim() : "");
     impRows = [];
     for (const row of rows.slice(1, 2001)) {
       const r = {
@@ -1763,9 +1765,12 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         qty: Math.max(1, Math.round(impNum(get(row, "qty")) || 1)), cost: impNum(get(row, "cost")),
         tag: impNum(get(row, "tag")), custom: impNum(get(row, "custom")), market: impNum(get(row, "market")),
         pid: (() => { const v = parseInt(get(row, "pid"), 10); return isFinite(v) ? v : null; })(),
+        lang: get(row, "lang").slice(0, 20),
       };
       if (!r.name && r.pid == null) continue;
-      impRows.push({ raw: r, ...impMatch(r) });
+      // prices are for English cards only; other languages are added as typed with the file's market price
+      if (r.lang && !/^(en|english)\b/i.test(r.lang)) impRows.push({ raw: r, opts: [], pick: "hand", status: "none", note: r.lang + " card: English TCGplayer prices don't apply" });
+      else impRows.push({ raw: r, ...impMatch(r) });
     }
     if (!impRows.length) { impMsg("No card rows found under the header.", true); return; }
     const n = (s) => impRows.filter((x) => x.status === s).length;
@@ -1782,7 +1787,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     for (const [x] of shown.slice(0, 300)) {
       const r = x.raw, row = el("div", "imp-row");
       const top = el("div", "imp-top");
-      top.append(el("span", "raw", [r.name, r.set, r.number, r.variant, r.cond].filter(Boolean).join(" · ") +
+      top.append(el("span", "raw", [r.name, r.set, r.number, r.variant, r.cond, r.lang && !/^(en|english)\b/i.test(r.lang) ? r.lang : ""].filter(Boolean).join(" · ") +
         " · ×" + r.qty + (r.cost != null ? " · cost " + money(r.cost) : "")),
         el("span", "dm " + (x.status === "ok" ? "high" : x.status === "check" ? "medium" : "low"), x.status === "ok" ? "Matched" : x.status === "check" ? "Check" : "No match"));
       const sel = el("select", "sel"); sel.setAttribute("aria-label", "Card for " + r.name);
@@ -1798,7 +1803,9 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         warn.hidden = !bad;
       };
       sel.addEventListener("change", checkNum); checkNum();
-      row.append(top, sel, warn); list.append(row);
+      row.append(top, sel, warn);
+      if (x.note) row.append(el("small", "sub-note", x.note));
+      list.append(row);
     }
     if (shown.length > 300) list.append(el("p", "sub-note", (shown.length - 300) + " more rows not shown; they will be imported as matched."));
     if (!shown.length) list.append(el("p", "sub-note", "No rows here."));
