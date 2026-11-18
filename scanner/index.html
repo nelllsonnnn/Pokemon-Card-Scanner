@@ -268,6 +268,8 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .imp-warn { color: var(--bad); font-size: .8rem; font-weight: 600; }
 .stats.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stats.three .stat b { font-size: 1.15rem; overflow-wrap: anywhere; }
+.sh-note { display: block; color: var(--muted); font-size: .78rem; margin-top: 4px; }
+#sh-inv-use { margin-top: 6px; justify-self: start; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -641,6 +643,10 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       <div class="calc two">
         <div class="field"><label class="lbl" for="sh-date">Date</label><input id="sh-date" type="date"></div>
         <div class="field"><label class="lbl" for="sh-fee">Table fee</label><div class="money"><span>$</span><input id="sh-fee" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+      </div>
+      <div class="calc two">
+        <div class="field"><label class="lbl" for="sh-inv">Inventory</label><div class="money"><span>$</span><input id="sh-inv" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div><button class="mini" id="sh-inv-use" type="button" hidden></button></div>
+        <div class="field"><label class="lbl" for="sh-cash">Ca$h</label><div class="money"><span>$</span><input id="sh-cash" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div><small class="sh-note">Cash you start with</small></div>
       </div>
       <button class="btn primary" id="sh-add" type="button" disabled>Add show</button>
       <div class="status" id="sh-msg" role="status"></div>
@@ -1890,7 +1896,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   };
 
   // ---------- inventory: list ----------
-  let ivFilter = "all", ivOpen = null, ivShowAll = false;
+  let ivFilter = "all", ivOpen = null, ivShowAll = false, ivValueNow = 0;
   for (const b of document.querySelectorAll("[data-ivf]")) b.onclick = () => {
     ivFilter = b.dataset.ivf;
     for (const x of document.querySelectorAll("[data-ivf]")) x.setAttribute("aria-pressed", String(x === b));
@@ -1910,6 +1916,9 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     $("iv-count").textContent = n.toLocaleString();
     $("iv-lines").textContent = items.length + (items.length === 1 ? " listing" : " listings");
     $("iv-value").textContent = money(value); $("iv-cost").textContent = money(cost);
+    ivValueNow = value;
+    $("sh-inv-use").hidden = !(value > 0);
+    $("sh-inv-use").textContent = "Use my inventory value (" + money(value) + ")";
     $("iv-restick").textContent = restick + " to re-sticker";
     $("iv-del-wrap").hidden = !items.length && !$("iv-del-msg").textContent;
     $("iv-del-all").hidden = !items.length;
@@ -2301,21 +2310,24 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     $("sh-add").disabled = true;
     try {
       const ref = showsCol.doc();
-      await ref.set({ name, date: $("sh-date").value || null, fee: fee >= 0 ? fee : 0, createdAt: Date.now() });
+      const inv = parseFloat($("sh-inv").value), cash = parseFloat($("sh-cash").value);
+      await ref.set({ name, date: $("sh-date").value || null, fee: fee >= 0 ? fee : 0, inv: inv >= 0 ? round2(inv) : null, cash: cash >= 0 ? round2(cash) : null, createdAt: Date.now() });
       try { localStorage.setItem("vendShow", ref.id); } catch {}
       renderShowSelect();
-      $("sh-name").value = ""; $("sh-fee").value = "";
+      $("sh-name").value = ""; $("sh-fee").value = ""; $("sh-inv").value = ""; $("sh-cash").value = "";
       $("sh-msg").className = "status"; $("sh-msg").textContent = "Show added and set as the show for checkout.";
     } catch { $("sh-msg").className = "status err"; $("sh-msg").textContent = "Couldn't save the show. Try again."; }
     finally { $("sh-add").disabled = !showsCol; }
   };
+  $("sh-inv-use").onclick = () => { $("sh-inv").value = round2(ivValueNow).toFixed(2); };
   let shOpen = null;
   function showStats(showId) {
-    const st = { n: 0, cards: 0, total: 0, cogs: 0, cash: 0, card: 0, trade: 0, sales: [] };
+    const st = { n: 0, cards: 0, total: 0, cogs: 0, cash: 0, card: 0, trade: 0, sold: 0, sales: [] };
     for (const d of saleDocs) {
       const s = d.data(); if (!s || (s.showId || null) !== showId) continue;
       st.n++; st.total += +s.total || 0; st.cogs += +s.cogs || 0; st[s.method === "card" ? "card" : s.method === "trade" ? "trade" : "cash"] += +s.total || 0;
       st.cards += (Array.isArray(s.items) ? s.items : []).reduce((a, x) => a + (+x.qty || 0), 0);
+      st.sold += (Array.isArray(s.items) ? s.items : []).reduce((a, x) => a + (+x.price || 0) * (+x.qty || 0), 0);
       st.sales.push([d, s]);
     }
     return st;
@@ -2337,9 +2349,29 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       wrap.append(row);
       if (shOpen === key) {
         const box = el("div", "iv-edit");
+        if (id !== null) {
+          const eg = el("div", "calc two");
+          const field = (label, key2, note) => {
+            const f = el("div", "field"), inp = el("input"), sm = el("small", "sh-note", note);
+            inp.type = "number"; inp.inputMode = "decimal"; inp.min = "0"; inp.step = "0.01"; inp.placeholder = "0.00";
+            inp.id = "sh-" + key2 + "-" + id; if (x[key2] != null) inp.value = (+x[key2]).toFixed(2);
+            const l = el("label", "lbl", label); l.htmlFor = inp.id;
+            const w = el("div", "money"); w.append(el("span", null, "$"), inp);
+            inp.onchange = async () => {
+              const v = parseFloat(inp.value); sm.textContent = "Saving\u2026";
+              try { await showsCol.doc(id).update({ [key2]: v >= 0 ? round2(v) : null }); }
+              catch { sm.textContent = "Couldn't save. Try again."; }
+            };
+            inp.onkeydown = (e) => { if (e.key === "Enter") inp.blur(); };
+            f.append(l, w, sm); eg.append(f);
+          };
+          field("Inventory", "inv", x.inv != null ? "Brought \u00b7 about " + money(Math.max(0, +x.inv - st.sold)) + " left after sales" : "Value of cards you brought");
+          field("Ca$h", "cash", x.cash != null ? "Start \u00b7 " + money(+x.cash + st.cash) + " with cash sales" : "Cash you start with");
+          box.append(eg);
+        }
         const g = el("div", "stats");
         const tile = (l, v, s) => { const t = el("div", "stat"); t.append(el("span", null, l), el("b", null, v), el("small", null, s)); g.append(t); };
-        tile("Sales", money(st.total), st.cards + " cards sold");
+        tile("Sales", money(st.total), st.cards + (st.cards === 1 ? " card sold" : " cards sold"));
         tile("Cost of cards", money(st.cogs), "What you paid for them");
         tile("Table fee", money(fee), id === null ? "None" : "For this show");
         tile("Profit", (profit < 0 ? "−" : "") + money(Math.abs(profit)), "Sales − cost − fee");
