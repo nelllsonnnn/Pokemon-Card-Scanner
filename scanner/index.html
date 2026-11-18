@@ -166,6 +166,25 @@ main { display: block; }
 .mv .s { grid-column: 2; color: var(--muted); font-size: .82rem; min-width: 0; overflow-wrap: anywhere; }
 .mv .ch { grid-column: 3; grid-row: 1; text-align: right; font: 700 1rem var(--font-display); font-variant-numeric: tabular-nums; }
 .mv .pr { grid-column: 3; grid-row: 2; text-align: right; font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.seg-b[data-mode][aria-pressed="true"] { color: var(--fg); }
+.lot-list { display: grid; gap: 8px; }
+.lot-row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem auto; gap: 8px; align-items: center; background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.lot-row .lr-main { display: grid; gap: 2px; min-width: 0; }
+.lot-row input[type="text"] { min-height: 38px; padding: 6px 10px; border-radius: 8px; background: var(--surface); }
+.lot-row small { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; padding-left: 2px; }
+.lot-row .money input { min-height: 38px; padding: 6px 8px 6px 24px; border-radius: 8px; background: var(--surface); }
+.lot-row .money span { left: 10px; }
+.lot-search { display: grid; gap: 8px; }
+.lot-tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.lot-tot span { color: var(--muted); font-size: .9rem; }
+.lot-tot b { font: 700 1.25rem var(--font-display); font-variant-numeric: tabular-nums; }
+.badge.lot { background: var(--bg); color: var(--accent); border: 1px solid var(--accent); }
+.d-lot { display: grid; gap: 6px; }
+.d-lot-row { display: flex; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.d-lot-row div { min-width: 0; }
+.d-lot-row b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.d-lot-row small { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.d-lot-row span { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -231,6 +250,7 @@ a { color: var(--accent); }
       <button class="btn primary" id="to-calc" type="button">
         <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2"/></svg>Calculate buy price
       </button>
+      <button class="btn" id="to-lot" type="button">+ Add to lot</button>
       <a class="tcg" id="r-link" href="#" target="_blank" rel="noopener">
         <span><b>Condition prices &amp; recent sales</b><small>Opens this card on TCGplayer: NM, LP, MP, HP and Damaged prices, plus its latest sales</small></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
@@ -270,6 +290,24 @@ a { color: var(--accent); }
   </div>
 
   <div class="view" data-view="calculator" hidden>
+    <div class="seg" role="group" aria-label="What you are pricing">
+      <button class="seg-b" type="button" data-mode="single" aria-pressed="true">Single card</button>
+      <button class="seg-b" type="button" data-mode="lot" aria-pressed="false">Lot</button>
+    </div>
+
+    <section class="panel" id="lot" aria-labelledby="lot-h" hidden>
+      <label class="lbl" id="lot-h">Cards in this lot</label>
+      <div class="lot-list" id="lot-list"></div>
+      <p class="sub-note" id="lot-empty">No cards yet. Tap &ldquo;Add a card&rdquo;, or use &ldquo;Add to lot&rdquo; on the Scan tab.</p>
+      <button class="btn" id="lot-add" type="button">+ Add a card</button>
+      <div class="lot-search" id="lot-search" hidden>
+        <input id="lot-q" type="search" placeholder="Search name or number, e.g. Pikachu 25" autocomplete="off" enterkeyhint="search" aria-label="Search cards to add">
+        <div class="cands" id="lot-res"></div>
+        <div class="slot-btns"><button class="mini" id="lot-manual" type="button">Add one by hand</button><button class="mini" id="lot-done" type="button">Done adding</button></div>
+      </div>
+      <div class="lot-tot"><span>Lot market value</span><b id="lot-total">$0.00</b></div>
+    </section>
+
     <section class="panel" id="calc" aria-labelledby="calc-h">
       <label class="lbl" id="calc-h">Buy calculator</label>
       <div class="field">
@@ -353,6 +391,7 @@ a { color: var(--accent); }
     <div><h2 id="d-name"></h2><p class="meta" id="d-date"></p></div>
     <div class="d-card" id="d-card"></div>
     <div class="stats" id="d-money"></div>
+    <div class="d-lot" id="d-lot" hidden></div>
     <span class="lbl">Photos</span>
     <div class="d-photos" id="d-photos"></div>
     <div class="tx-act" id="d-act"></div>
@@ -613,9 +652,9 @@ a { color: var(--accent); }
       list.append(b);
     });
   }
-  for (const b of document.querySelectorAll(".seg-b")) b.onclick = () => {
+  for (const b of document.querySelectorAll(".seg-b[data-dir]")) b.onclick = () => {
     mvDir = b.dataset.dir;
-    for (const x of document.querySelectorAll(".seg-b")) x.setAttribute("aria-pressed", String(x === b));
+    for (const x of document.querySelectorAll(".seg-b[data-dir]")) x.setAttribute("aria-pressed", String(x === b));
     renderMovers();
   };
   for (const b of document.querySelectorAll("[data-min]")) b.onclick = () => {
@@ -689,11 +728,107 @@ a { color: var(--accent); }
     if (id === "p-sold") soldEdited = $("p-sold").value !== "";
     recentB = touch(recentB, id); solveB();
   });
+  // ---------- lot ----------
+  let lotMode = false, lot = [];
+  try {
+    const d = JSON.parse(localStorage.getItem("lotDraft") || "null");
+    if (d && Array.isArray(d.items)) { lot = d.items.slice(0, 100); lotMode = d.mode === true; }
+  } catch {}
+  const saveLot = () => { try { localStorage.setItem("lotDraft", JSON.stringify({ mode: lotMode, items: lot })); } catch {} };
+  const lotTotal = () => round2(lot.reduce((a, x) => a + (x.market > 0 ? x.market : 0), 0));
+  function lotChanged() {
+    $("lot-total").textContent = money(lotTotal());
+    $("lot-empty").hidden = lot.length > 0;
+    if (lotMode) {
+      $("p-card").value = lot.length ? "Lot of " + lot.length + (lot.length === 1 ? " card" : " cards") : "";
+      $("c-market").value = lot.length ? lotTotal().toFixed(2) : "";
+      calc();
+    }
+    saveLot();
+  }
+  function renderLot() {
+    const list = $("lot-list"); list.replaceChildren();
+    lot.forEach((x, i) => {
+      const row = document.createElement("div"); row.className = "lot-row";
+      const main = document.createElement("div"); main.className = "lr-main";
+      const nm = document.createElement("input"); nm.type = "text"; nm.value = x.name || ""; nm.placeholder = "Card name"; nm.maxLength = 120;
+      nm.setAttribute("aria-label", "Card " + (i + 1) + " name");
+      nm.oninput = () => { x.name = nm.value; saveLot(); };
+      main.append(nm);
+      const meta = [x.set, x.number, x.variant].filter(Boolean).join(" \u00b7 ");
+      if (meta) { const sm = document.createElement("small"); sm.textContent = meta; main.append(sm); }
+      const mw = document.createElement("div"); mw.className = "money";
+      const cur = document.createElement("span"); cur.textContent = "$";
+      const pr = document.createElement("input"); pr.type = "number"; pr.inputMode = "decimal"; pr.min = "0"; pr.step = "0.01"; pr.placeholder = "Market";
+      pr.setAttribute("aria-label", "Card " + (i + 1) + " market price");
+      if (x.market > 0) pr.value = x.market.toFixed(2);
+      pr.oninput = () => { const v = parseFloat(pr.value); x.market = v >= 0 ? v : null; lotChanged(); };
+      mw.append(cur, pr);
+      const rm = document.createElement("button"); rm.type = "button"; rm.className = "mini"; rm.textContent = "\u2715";
+      rm.setAttribute("aria-label", "Remove card " + (i + 1));
+      rm.onclick = () => { lot.splice(i, 1); renderLot(); };
+      row.append(main, mw, rm); list.append(row);
+    });
+    lotChanged();
+  }
+  function addToLot(c, v) {
+    if (lot.length >= 100) return false;
+    lot.push(c ? { name: c.name, set: c.set, number: c.number, variant: v.variant, market: v.price, cardId: c.id } : { name: "", market: null });
+    renderLot();
+    return true;
+  }
+  function setMode(mode) {
+    lotMode = mode === "lot";
+    for (const b of document.querySelectorAll(".seg-b[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+    $("lot").hidden = !lotMode;
+    recentB = ["p-sold", "p-paid"]; soldEdited = false; $("p-paid").value = ""; $("p-profit").value = "";
+    if (lotMode) lotChanged();
+    else if (sel) { calcKey = null; render(); }
+    else { $("p-card").value = ""; $("c-market").value = ""; calc(); }
+    saveLot();
+  }
+  for (const b of document.querySelectorAll(".seg-b[data-mode]")) b.onclick = () => setMode(b.dataset.mode);
+  $("lot-add").onclick = () => { $("lot-search").hidden = false; $("lot-add").hidden = true; $("lot-q").focus(); };
+  $("lot-done").onclick = () => { $("lot-search").hidden = true; $("lot-add").hidden = false; $("lot-q").value = ""; $("lot-res").replaceChildren(); };
+  $("lot-manual").onclick = () => { addToLot(null); const ins = $("lot-list").querySelectorAll('input[type="text"]'); ins[ins.length - 1]?.focus(); };
+  let lotT;
+  $("lot-q").addEventListener("input", () => { clearTimeout(lotT); lotT = setTimeout(lotSearch, 150); });
+  function lotSearch() {
+    const box = $("lot-res"); box.replaceChildren();
+    const qs = tokens($("lot-q").value);
+    if (!qs.length || !data) return;
+    const hits = [];
+    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
+    const rows = [];
+    for (const c of hits) { for (const v of c.vars) rows.push([c, v]); if (rows.length >= 12) break; }
+    if (!rows.length) { const p = document.createElement("p"); p.className = "sub-note"; p.textContent = "No cards match that search."; box.append(p); return; }
+    for (const [c, v] of rows.slice(0, 12)) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "cand";
+      const n = document.createElement("span"); n.className = "n"; n.textContent = "+ " + c.name;
+      const sm = document.createElement("span"); sm.className = "s"; sm.textContent = c.set + " \u00b7 " + c.number + " \u00b7 " + v.variant;
+      const pr = document.createElement("span"); pr.className = "p"; pr.textContent = money(v.price);
+      b.append(n, pr, sm);
+      b.onclick = () => { if (addToLot(c, v)) { b.disabled = true; n.textContent = "\u2713 " + c.name; } };
+      box.append(b);
+    }
+  }
+  $("to-lot").onclick = () => {
+    if (!sel) return;
+    const btn = $("to-lot");
+    if (!addToLot(sel, sel.vars[selVar])) { btn.textContent = "Lot is full (100 cards)"; return; }
+    if (!lotMode) setMode("lot");
+    btn.textContent = "\u2713 Added \u00b7 " + lot.length + (lot.length === 1 ? " card" : " cards") + " in lot";
+    clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = "+ Add to lot"; }, 2000);
+  };
+
   function resetProfit() {
     recentB = ["p-sold", "p-paid"]; soldEdited = false;
     $("p-paid").value = ""; $("p-profit").value = ""; syncPaid();
   }
   solveA();
+
+  renderLot(); if (lotMode) setMode("lot");
 
   // ---------- transactions (saved privately to the viewer's Claude account) ----------
   let txCol = null, photosCol = null, lastDocs = [], openId = null, detailEditing = false;
@@ -793,8 +928,12 @@ a { color: var(--accent); }
       paid, sold: soldRaw === "" || !(sold >= 0) ? null : sold,
       market: market > 0 ? market : null, buyPct: pctv >= 0 ? pctv : null,
       payout: payv >= 0 ? payv : null,
-      cardId: sel ? sel.id : null, at: Date.now(),
+      cardId: !lotMode && sel ? sel.id : null, at: Date.now(),
     };
+    if (lotMode) {
+      if (!lot.length) { pmsg("Add at least one card to the lot first.", true); return; }
+      doc.lot = lot.map((x) => ({ name: String(x.name || "Card").slice(0, 120), set: x.set || "", number: x.number || "", variant: x.variant || "", market: x.market > 0 ? x.market : null, cardId: x.cardId ?? null }));
+    }
     if (doc.sold != null) doc.soldAt = Date.now();
     const ph = { in: slots.in, out: slots.out };
     if (ph.in) doc.thumbIn = ph.in.thumb;
@@ -806,6 +945,7 @@ a { color: var(--accent); }
       for (const k of ["in", "out"]) if (ph[k]) { try { await photosCol.doc(ref.id + "-" + k).set({ photo: ph[k].full }); } catch {} }
       pmsg((doc.sold == null ? "Recorded as still holding." : "Transaction recorded.") + " Tap it in Transactions for details.");
       resetProfit(); clearPhoto();
+      if (lotMode) { lot = []; renderLot(); }
     } catch (e) {
       pmsg(e?.code === "quota_exceeded" ? "Storage is full. Delete some old transactions first." : "Couldn't save that. Try again.", true);
     } finally { $("p-save").disabled = !txCol; }
@@ -833,6 +973,7 @@ a { color: var(--accent); }
       top.append(name, when);
       const nums = document.createElement("span"); nums.className = "tx-nums";
       const item = (label, val, cls) => { const s = document.createElement("span"); const b = document.createElement("b"); b.textContent = val; if (cls) b.className = cls; s.append(label + " ", b); nums.append(s); };
+      if (Array.isArray(t.lot)) { const lb = document.createElement("span"); lb.className = "badge lot"; lb.textContent = "Lot \u00b7 " + t.lot.length; nums.append(lb); }
       item("In for", money(paid));
       if (sold == null) { const bdg = document.createElement("span"); bdg.className = "badge"; bdg.textContent = "Holding"; nums.append(bdg); }
       else { const p = sold - paid; item("Sold", money(sold)); item("Made", signed(p), p < 0 ? "down" : "up"); }
@@ -882,7 +1023,7 @@ a { color: var(--accent); }
       photosCol?.doc(id + "-card").get().then((s) => { const p = s.exists ? s.data()?.photo : null; if (openId === id && isImg(p)) im.src = p; }).catch(() => {});
     } else {
       const p = document.createElement("p"); p.className = "d-noimg";
-      p.textContent = t.cardMissing ? "TCGplayer has no picture for this card."
+      p.textContent = Array.isArray(t.lot) ? "A lot of " + t.lot.length + " cards. They\u2019re listed below." : t.cardMissing ? "TCGplayer has no picture for this card."
         : t.cardId ? "The card picture is on its way. It's added automatically within a few hours of recording."
         : "No card picture: this deal wasn't linked to a scanned or searched card.";
       cardBox.append(p);
@@ -903,6 +1044,27 @@ a { color: var(--accent); }
     tile("Sold for", sold == null ? "Holding" : money(sold), sold == null ? "Not sold yet" : "Money out");
     if (sold == null) tile("Profit", "—", "Once it sells");
     else tile("Profit", signed(sold - paid), paid > 0 ? pct((sold - paid) / paid * 100) + " on what you paid" : "", sold - paid < 0 ? "down" : "up");
+
+    // cards in a lot
+    const dl = $("d-lot"); dl.replaceChildren(); dl.hidden = !Array.isArray(t.lot);
+    if (Array.isArray(t.lot)) {
+      const h = document.createElement("span"); h.className = "lbl"; h.textContent = "Cards in this lot (" + t.lot.length + ")"; dl.append(h);
+      let tot = 0;
+      for (const x of t.lot) {
+        const r = document.createElement("div"); r.className = "d-lot-row";
+        const l = document.createElement("div");
+        const b = document.createElement("b"); b.textContent = String(x?.name || "Card");
+        const sm = document.createElement("small"); sm.textContent = [x?.set, x?.number, x?.variant].filter(Boolean).map(String).join(" \u00b7 ");
+        l.append(b, sm);
+        const v = document.createElement("span"); v.textContent = x?.market > 0 ? money(+x.market) : "\u2014";
+        if (x?.market > 0) tot += +x.market;
+        r.append(l, v); dl.append(r);
+      }
+      const tr = document.createElement("div"); tr.className = "lot-tot";
+      const a = document.createElement("span"); a.textContent = "Lot market value when bought";
+      const b2 = document.createElement("b"); b2.textContent = money(tot);
+      tr.append(a, b2); dl.append(tr);
+    }
 
     // In / Out photos
     const pb = $("d-photos"); pb.replaceChildren();
@@ -1021,11 +1183,13 @@ a { color: var(--accent); }
     const m = v.price;
     const key = sel.id + "|" + selVar;
     if (key !== calcKey) {
-      calcKey = key;
-      $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
-      soldEdited = false; pmsg(""); aiReset(); clearPhoto();
-      recentB = ["p-sold", "p-paid"]; $("p-paid").value = ""; $("p-profit").value = "";
-      $("c-market").value = m.toFixed(2); calc();
+      calcKey = key; aiReset();
+      if (!lotMode) {
+        $("p-card").value = `${sel.name} · ${sel.set} ${sel.number} · ${v.variant}`;
+        soldEdited = false; pmsg(""); clearPhoto();
+        recentB = ["p-sold", "p-paid"]; $("p-paid").value = ""; $("p-profit").value = "";
+        $("c-market").value = m.toFixed(2); calc();
+      }
     }
     $("s-market").textContent = money(m);
     $("s-low").textContent = money(v.low);
