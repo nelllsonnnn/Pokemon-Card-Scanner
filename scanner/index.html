@@ -262,6 +262,9 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .by-out .money span { left: 9px; }
 .by-out .dm { display: inline-block; margin-top: 3px; }
 @media (max-width: 380px) { .by-out { grid-template-columns: 1fr 1fr; } .by-out .stat:last-child { grid-column: 1 / -1; } }
+.del-all { display: grid; gap: 8px; justify-items: start; border-top: 1px solid var(--line); padding-top: 12px; }
+.del-confirm { display: grid; gap: 8px; background: var(--bad-bg); border-radius: 10px; padding: 10px 12px; }
+.del-confirm p { margin: 0; color: var(--fg); font-size: .9rem; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -546,6 +549,14 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         <button class="var" type="button" data-ivf="high" aria-pressed="false">High demand</button>
       </div>
       <div class="iv-list" id="iv-list"></div>
+      <div class="del-all" id="iv-del-wrap" hidden>
+        <button class="mini danger" id="iv-del-all" type="button">Delete all inventory</button>
+        <div class="del-confirm" id="iv-del-confirm" hidden>
+          <p id="iv-del-q"></p>
+          <div class="slot-btns"><button class="mini danger" id="iv-del-yes" type="button">Yes, delete everything</button><button class="mini" id="iv-del-no" type="button">Cancel</button></div>
+        </div>
+        <div class="status" id="iv-del-msg" role="status"></div>
+      </div>
       <p class="foot">Sticker price is the TCGplayer market price. The demand tag (High, Medium, Low) shows how well the card sells: how many days this week its market price moved (it only moves when the card sells) and how close listings are to market. Prices update daily; a card is flagged when its sticker is 5% or more off.</p>
     </section>
   </div>
@@ -1845,6 +1856,9 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     $("iv-lines").textContent = items.length + (items.length === 1 ? " listing" : " listings");
     $("iv-value").textContent = money(value); $("iv-cost").textContent = money(cost); $("iv-market").textContent = money(mkt);
     $("iv-restick").textContent = restick + (restick === 1 ? " sticker to update" : " stickers to update");
+    $("iv-del-wrap").hidden = !items.length && !$("iv-del-msg").textContent;
+    $("iv-del-all").hidden = !items.length;
+    $("iv-del-q").textContent = "Delete all " + n.toLocaleString() + (n === 1 ? " card" : " cards") + " (" + items.length + (items.length === 1 ? " listing" : " listings") + ") from your inventory? This can’t be undone. Sales and shows are kept.";
     $("iv-state").hidden = items.length > 0;
     $("iv-state").textContent = "No cards yet. Add your first card above.";
     const qs = tokens($("iv-filter").value);
@@ -1870,6 +1884,25 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       list.append(wrap);
     }
   }
+  $("iv-del-all").onclick = () => { $("iv-del-confirm").hidden = false; $("iv-del-all").disabled = true; $("iv-del-msg").textContent = ""; $("iv-del-no").focus(); };
+  $("iv-del-no").onclick = () => { $("iv-del-confirm").hidden = true; $("iv-del-all").disabled = false; };
+  $("iv-del-yes").onclick = async () => {
+    if (!invCol) return;
+    const ids = invDocs.map((d) => d.id);
+    $("iv-del-yes").disabled = $("iv-del-no").disabled = true;
+    let done = 0;
+    try {
+      for (const id of ids) { await invCol.doc(id).delete(); done++; if (done % 10 === 0) $("iv-del-msg").textContent = "Deleting… " + done + " of " + ids.length; }
+      $("iv-del-msg").className = "status"; $("iv-del-msg").textContent = "Deleted " + done + (done === 1 ? " listing" : " listings") + ". Your inventory is empty.";
+      cart = []; ivOpen = null;
+    } catch {
+      $("iv-del-msg").className = "status err"; $("iv-del-msg").textContent = "Stopped after " + done + " of " + ids.length + " listings. Tap Delete all again to finish.";
+    } finally {
+      $("iv-del-yes").disabled = $("iv-del-no").disabled = false;
+      $("iv-del-confirm").hidden = true; $("iv-del-all").disabled = false;
+      renderInv(); renderCart();
+    }
+  };
   function ivEditor(id, it, pi) {
     const box = el("div", "iv-edit");
     const grid = el("div", "calc");
