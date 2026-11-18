@@ -270,6 +270,9 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .stats.three .stat b { font-size: 1.15rem; overflow-wrap: anywhere; }
 .sh-note { display: block; color: var(--muted); font-size: .78rem; margin-top: 4px; }
 #sh-inv-use { margin-top: 6px; justify-self: start; }
+.sh-phase { margin-top: 2px; }
+.sh-done { margin: 0; color: var(--good); font-weight: 600; font-size: .9rem; }
+.mini.fin { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -2166,8 +2169,9 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   function renderShowSelect() {
     const s = $("co-show"); let cur = ""; try { cur = localStorage.getItem("vendShow") || ""; } catch {}
     s.replaceChildren(new Option("No show (other sale)", ""));
-    for (const d of showDocs) { const x = d.data(); if (x) s.append(new Option(String(x.name || "Show") + " · " + fmtShowDate(x.date), d.id)); }
-    s.value = showDocs.some((d) => d.id === cur) ? cur : "";
+    const open = showDocs.filter((d) => { const x = d.data(); return x && !x.finished; });
+    for (const d of open) { const x = d.data(); s.append(new Option(String(x.name || "Show") + " · " + fmtShowDate(x.date), d.id)); }
+    s.value = open.some((d) => d.id === cur) ? cur : "";
   }
   $("co-show").onchange = () => { try { localStorage.setItem("vendShow", $("co-show").value); } catch {} };
   const fmtShowDate = (d) => d ? new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
@@ -2345,29 +2349,56 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       const stk = el("span", "stk " + (profit < 0 ? "down" : "up"), (profit < 0 ? "−" : "+") + money(Math.abs(profit)));
       stk.append(el("small", null, "profit"));
       row.append(el("span", "n", String(x.name)), stk, el("span", "s", [fmtShowDate(x.date), st.n + (st.n === 1 ? " sale" : " sales"), money(st.total) + " sold"].filter(Boolean).join(" · ")));
+      if (x.finished) { const tg = el("span", "iv-tags"); tg.append(el("span", "dm high", "Finished")); row.append(tg); }
       row.onclick = () => { shOpen = shOpen === key ? null : key; renderShows(); };
       wrap.append(row);
       if (shOpen === key) {
         const box = el("div", "iv-edit");
         if (id !== null) {
-          const eg = el("div", "calc two");
-          const field = (label, key2, note) => {
+          // a money box that saves to this show when you leave it (or press Enter)
+          const field = (grid, label, key2, note, extra) => {
             const f = el("div", "field"), inp = el("input"), sm = el("small", "sh-note", note);
             inp.type = "number"; inp.inputMode = "decimal"; inp.min = "0"; inp.step = "0.01"; inp.placeholder = "0.00";
             inp.id = "sh-" + key2 + "-" + id; if (x[key2] != null) inp.value = (+x[key2]).toFixed(2);
             const l = el("label", "lbl", label); l.htmlFor = inp.id;
             const w = el("div", "money"); w.append(el("span", null, "$"), inp);
-            inp.onchange = async () => {
-              const v = parseFloat(inp.value); sm.textContent = "Saving\u2026";
+            const save = async (v) => {
+              sm.textContent = "Saving\u2026";
               try { await showsCol.doc(id).update({ [key2]: v >= 0 ? round2(v) : null }); }
               catch { sm.textContent = "Couldn't save. Try again."; }
             };
+            inp.onchange = () => save(parseFloat(inp.value));
             inp.onkeydown = (e) => { if (e.key === "Enter") inp.blur(); };
-            f.append(l, w, sm); eg.append(f);
+            f.append(l, w, sm);
+            if (extra && extra.value > 0) {
+              const b = el("button", "mini", extra.label + " (" + money(extra.value) + ")"); b.type = "button";
+              b.onclick = () => { inp.value = round2(extra.value).toFixed(2); save(extra.value); };
+              f.append(b);
+            }
+            grid.append(f);
           };
-          field("Inventory", "inv", x.inv != null ? "Brought \u00b7 about " + money(Math.max(0, +x.inv - st.sold)) + " left after sales" : "Value of cards you brought");
-          field("Ca$h", "cash", x.cash != null ? "Start \u00b7 " + money(+x.cash + st.cash) + " with cash sales" : "Cash you start with");
-          box.append(eg);
+          const expectCash = (x.cash != null ? +x.cash : 0) + st.cash;
+          box.append(el("span", "lbl sh-phase", "Pre-show"));
+          const pre = el("div", "calc two");
+          field(pre, "Inventory", "inv", "What you brought");
+          field(pre, "Ca$h", "cash", "What you started with");
+          box.append(pre);
+          box.append(el("span", "lbl sh-phase", "Post-show"));
+          const post = el("div", "calc two");
+          field(post, "Inventory", "invPost", x.inv != null ? "About " + money(Math.max(0, +x.inv - st.sold)) + " expected after sales" : "What you took home",
+            x.finished ? null : { label: "Use current", value: ivValueNow });
+          field(post, "Ca$h", "cashPost", x.cash != null || st.cash ? money(expectCash) + " expected from cash sales" : "What you ended with",
+            x.finished || !(expectCash > 0) ? null : { label: "Use expected", value: expectCash });
+          box.append(post);
+          if (x.finished) {
+            const rg = el("div", "stats sh-result");
+            const rt = (l, v, sub, cls) => { const t = el("div", "stat"); t.append(el("span", null, l), el("b", cls, v), el("small", null, sub)); rg.append(t); };
+            const dc = x.cashPost != null && x.cash != null ? round2(+x.cashPost - +x.cash) : null;
+            const di = x.invPost != null && x.inv != null ? round2(+x.invPost - +x.inv) : null;
+            rt("Cash change", dc == null ? "\u2014" : (dc < 0 ? "\u2212" : "+") + money(Math.abs(dc)), "Post \u2212 pre ca$h", dc > 0 ? "up" : dc < 0 ? "down" : "");
+            rt("Inventory change", di == null ? "\u2014" : (di < 0 ? "\u2212" : "+") + money(Math.abs(di)), "Post \u2212 pre inventory", "");
+            box.append(el("p", "sh-done", "\u2713 Finished " + fmtDate(x.finishedAt) + (dc != null && di != null ? " \u00b7 cash in vs. inventory out: " + ((dc + di) < 0 ? "\u2212" : "+") + money(Math.abs(dc + di)) : "")), rg);
+          }
         }
         const g = el("div", "stats");
         const tile = (l, v, s) => { const t = el("div", "stat"); t.append(el("span", null, l), el("b", null, v), el("small", null, s)); g.append(t); };
@@ -2388,7 +2419,20 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
             try { for (const [sd] of st.sales) await salesCol.doc(sd.id).update({ showId: null }); await showsCol.doc(id).delete(); shOpen = null; }
             catch { del.disabled = false; del.textContent = "Delete show"; armed = null; }
           };
-          act.append(use, del); box.append(act);
+          const fin = el("button", x.finished ? "mini" : "mini fin", x.finished ? "Reopen show" : "Finish show"); fin.type = "button";
+          const fmsg = el("small", "sh-note");
+          fin.onclick = async () => {
+            if (!x.finished && (x.invPost == null || x.cashPost == null)) {
+              fmsg.textContent = "Enter the post-show Inventory and Ca$h first."; return;
+            }
+            fin.disabled = true;
+            try {
+              await showsCol.doc(id).update(x.finished ? { finished: false, finishedAt: null } : { finished: true, finishedAt: Date.now() });
+              let cur = ""; try { cur = localStorage.getItem("vendShow") || ""; } catch {}
+              if (!x.finished && cur === id) { try { localStorage.removeItem("vendShow"); } catch {} }
+            } catch { fin.disabled = false; fmsg.textContent = "Couldn't save. Try again."; }
+          };
+          act.append(...(x.finished ? [fin, del] : [fin, use, del])); box.append(act, fmsg);
         }
         wrap.append(box);
       }
