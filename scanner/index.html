@@ -145,11 +145,27 @@ input[type="text"] { width: 100%; font: 400 1rem var(--font-body); padding: 12px
 [hidden] { display: none !important; }
 main { display: block; }
 .view { display: grid; gap: 18px; }
-.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
 .tab { appearance: none; background: none; border: 0; color: var(--muted); font: 600 .75rem var(--font-body); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 4px 8px; min-height: 58px; cursor: pointer; }
 .tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tab[aria-selected="true"] { color: var(--accent); }
 .tab:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; border-radius: 10px; }
+.sub-note { margin: 0; color: var(--muted); font-size: .9rem; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; }
+.seg-b { appearance: none; border: 0; background: none; color: var(--muted); font: 600 .95rem var(--font-body); padding: 10px; border-radius: 9px; cursor: pointer; min-height: 44px; }
+.seg-b[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+.seg-b[data-dir="up"][aria-pressed="true"] { color: var(--good); }
+.seg-b[data-dir="down"][aria-pressed="true"] { color: var(--bad); }
+.seg-b:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.mv-list { display: grid; gap: 6px; }
+.mv { appearance: none; width: 100%; text-align: left; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 1.7rem minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; cursor: pointer; }
+.mv:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.mv .rk { grid-row: 1 / span 2; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mv .n { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.mv .s { grid-column: 2; color: var(--muted); font-size: .82rem; min-width: 0; overflow-wrap: anywhere; }
+.mv .ch { grid-column: 3; grid-row: 1; text-align: right; font: 700 1rem var(--font-display); font-variant-numeric: tabular-nums; }
+.mv .pr { grid-column: 3; grid-row: 2; text-align: right; font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -232,6 +248,25 @@ a { color: var(--accent); }
     </section>
 
     <p class="foot">Prices are TCGplayer market prices for English cards in Near Mint condition, refreshed daily. Played or damaged cards sell for less. A good deal is 15% or more under market; overpriced is 15% or more over.</p>
+  </div>
+
+  <div class="view" data-view="movers" hidden>
+    <section class="panel" aria-labelledby="mv-h">
+      <label class="lbl" id="mv-h">Market movers this week</label>
+      <p class="sub-note" id="mv-sub">Loading prices&hellip;</p>
+      <div class="seg" role="group" aria-label="Direction">
+        <button class="seg-b" type="button" data-dir="up" aria-pressed="true">&#9650; Going up</button>
+        <button class="seg-b" type="button" data-dir="down" aria-pressed="false">&#9660; Going down</button>
+      </div>
+      <div class="chips" role="group" aria-label="Card value">
+        <button class="var" type="button" data-min="3" aria-pressed="true">$3+</button>
+        <button class="var" type="button" data-min="20" aria-pressed="false">$20+</button>
+        <button class="var" type="button" data-min="50" aria-pressed="false">$50+</button>
+        <button class="var" type="button" data-min="100" aria-pressed="false">$100+</button>
+      </div>
+      <div class="mv-list" id="mv-list"></div>
+      <p class="foot">Change in TCGplayer market price (Near Mint) over the last 7 days. A move only counts when the cheapest listing moved the same way, so one odd sale won&rsquo;t show up here. Tap a card to see its prices.</p>
+    </section>
   </div>
 
   <div class="view" data-view="calculator" hidden>
@@ -333,6 +368,9 @@ a { color: var(--accent); }
   <button class="tab" role="tab" type="button" data-go="scan" aria-selected="true">
     <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="7" width="8" height="10" rx="1"/></svg>Scan
   </button>
+  <button class="tab" role="tab" type="button" data-go="movers" aria-selected="false">
+    <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Movers
+  </button>
   <button class="tab" role="tab" type="button" data-go="calculator" aria-selected="false">
     <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2"/></svg>Calculator
   </button>
@@ -375,6 +413,7 @@ a { color: var(--accent); }
     $("asof").textContent = `${cards.length.toLocaleString()} cards · TCGplayer prices as of ${new Date(d.asof + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     refreshPhotoButtons();
     if ($("q").value) search();
+    buildMovers();
   }).catch(() => {
     $("asof").textContent = "Couldn't load prices. Reload the page to try again.";
   });
@@ -500,9 +539,9 @@ a { color: var(--accent); }
   }
 
   // ---------- result ----------
-  function choose(c, g) {
+  function choose(c, g, varName) {
     sel = c;
-    selVar = 0;
+    selVar = Math.max(0, varName ? c.vars.findIndex((v) => v.variant === varName) : 0);
     if (g) {
       const want = g.first_edition ? "1st edition" : norm(g.finish);
       let i = c.vars.findIndex((v) => want && norm(v.variant) === want);
@@ -529,8 +568,64 @@ a { color: var(--accent); }
 
   $("ask").addEventListener("input", () => sel && render());
 
+  // ---------- weekly movers ----------
+  let movers = { up: [], down: [] }, mvDir = "up", mvMin = 3;
+  function buildMovers() {
+    const up = [], down = [];
+    for (const c of cards) for (const v of c.vars) {
+      const now = v.price, was = v.p7, low = v.low;
+      if (!(now > 0) || !(was > 0) || low == null) continue;
+      const ch = (now - was) / was * 100;
+      if (Math.abs(ch) < 10 || Math.abs(now - was) < 1.5) continue;
+      if (Math.max(now, was) < 3 || Math.min(now, was) < 1) continue;
+      if (low < now / 2 || low > now * 2) continue;               // outlier listing
+      if (ch > 0 && low < was + (now - was) / 2) continue;         // listings don't back the rise
+      if (ch < 0 && low > was - (was - now) / 2) continue;         // listings don't back the drop
+      (ch > 0 ? up : down).push({ c, v, ch });
+    }
+    up.sort((a, b) => b.ch - a.ch); down.sort((a, b) => a.ch - b.ch);
+    movers = { up, down };
+    const f = (d) => d ? new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "?";
+    $("mv-sub").textContent = `${f(data.d7)} \u2192 ${f(data.asof)}: ${up.length.toLocaleString()} cards up, ${down.length.toLocaleString()} down`;
+    renderMovers();
+  }
+  function renderMovers() {
+    const list = $("mv-list"); list.replaceChildren();
+    const rows = movers[mvDir].filter((m) => Math.max(m.v.price, m.v.p7) >= mvMin).slice(0, 30);
+    if (!rows.length) {
+      const p = document.createElement("p"); p.className = "sub-note";
+      p.textContent = data ? "No confirmed moves in this price range this week." : "Loading prices\u2026";
+      list.append(p); return;
+    }
+    rows.forEach((m, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "mv";
+      const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = String(i + 1);
+      const n = document.createElement("span"); n.className = "n"; n.textContent = m.c.name;
+      const ch = document.createElement("span"); ch.className = "ch " + (m.ch > 0 ? "up" : "down"); ch.textContent = pct(m.ch);
+      const s = document.createElement("span"); s.className = "s"; s.textContent = `${m.c.set} \u00b7 ${m.c.number} \u00b7 ${m.v.variant}`;
+      const pr = document.createElement("span"); pr.className = "pr"; pr.textContent = `${money(m.v.p7)} \u2192 ${money(m.v.price)}`;
+      b.append(rk, n, ch, s, pr);
+      b.onclick = () => {
+        choose(m.c, null, m.v.variant);
+        location.hash = "scan";
+        setTimeout(() => $("result").scrollIntoView({ block: "start" }), 60);
+      };
+      list.append(b);
+    });
+  }
+  for (const b of document.querySelectorAll(".seg-b")) b.onclick = () => {
+    mvDir = b.dataset.dir;
+    for (const x of document.querySelectorAll(".seg-b")) x.setAttribute("aria-pressed", String(x === b));
+    renderMovers();
+  };
+  for (const b of document.querySelectorAll("[data-min]")) b.onclick = () => {
+    mvMin = +b.dataset.min;
+    for (const x of document.querySelectorAll("[data-min]")) x.setAttribute("aria-pressed", String(x === b));
+    renderMovers();
+  };
+
   // ---------- pages ----------
-  const VIEWS = ["scan", "calculator", "transactions"];
+  const VIEWS = ["scan", "movers", "calculator", "transactions"];
   function go(v) {
     if (!VIEWS.includes(v)) v = "scan";
     for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== v;
