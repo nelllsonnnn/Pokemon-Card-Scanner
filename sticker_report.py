@@ -5,7 +5,9 @@ Uses the same demand score and sticker formula as the scanner page:
   demand score 0-100 = 60% sales activity (days of the last 7 the market price
   moved) + 25% how close the cheapest listing is to market + 15% how close the
   mid listing price is to market.  Score 60+ = high demand -> 105-110% of market,
-  below 60 -> 100-104%.  Rounded to $0.25 under $10, $0.50 under $50, $1 under
+  below 60 -> 100-104%.  The market price is first adjusted for condition
+  (Near Mint 100%, Lightly Played 85%, Moderately Played 70%, Heavily Played
+  55%, Damaged 40%).  Rounded to $0.25 under $10, $0.50 under $50, $1 under
   $500, $5 above.  A card needs a new sticker when the price on its sticker (tag)
   is off by 5% or more (at least $0.50).
 
@@ -15,7 +17,7 @@ Usage:  python3 sticker_report.py INV_DIR PRICES_JSON
   PRICES_JSON  the scanner's prices.json
 Prints a plain-text report.
 """
-import glob, json, math, os, sys
+import glob, json, math, os, re, sys
 
 
 def nice_round(x):
@@ -34,6 +36,29 @@ def demand(v):
     level = "high" if score >= 60 else "medium" if score >= 30 else "low"
     mult = min(1.10, 1.05 + 0.05 * (score - 60) / 40) if score >= 60 else 1 + 0.04 * score / 59
     return {"score": score, "level": level, "mult": mult}
+
+
+CONDS = {"NM": ("Near Mint", 1.0), "LP": ("Lightly Played", 0.85), "MP": ("Moderately Played", 0.7),
+         "HP": ("Heavily Played", 0.55), "DMG": ("Damaged", 0.4)}
+
+
+def cond_key(text):
+    s = re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+    if not s:
+        return "NM"
+    if s in ("nm", "lp", "mp", "hp", "dmg"):
+        return s.upper()
+    if re.search(r"\b(dmg|damaged|poor)\b", s):
+        return "DMG"
+    if re.search(r"\b(hp|heavily)\b", s):
+        return "HP"
+    if re.search(r"\b(mp|moderately)\b", s):
+        return "MP"
+    if re.search(r"\b(lp|lightly|excellent)\b", s):
+        return "LP"
+    if re.search(r"\bplayed\b", s):
+        return "MP"
+    return "NM"
 
 
 def money(x):
@@ -58,13 +83,15 @@ def main(inv_dir, prices_path):
         n_cards += qty
         v = live.get((it.get("cardId"), it.get("variant"))) if it.get("cardId") is not None else None
         dm = demand(v)
-        market = v["price"] if v and v.get("price") else (it.get("market") or None)
+        ck = cond_key(it.get("cond"))
+        nm = v["price"] if v and v.get("price") else (it.get("market") or None)
+        market = round(nm * CONDS[ck][1], 2) if nm else None
         auto = nice_round(market * (dm["mult"] if dm else 1.02)) if market else None
         custom = it.get("custom") if (it.get("custom") or 0) > 0 else None
         sticker = custom or auto
         tag = it.get("tag") if (it.get("tag") or 0) > 0 else None
         value += (sticker or 0) * qty
-        label = " · ".join(x for x in (it.get("name"), it.get("set"), it.get("number"), it.get("variant")) if x)
+        label = " · ".join(x for x in (it.get("name"), it.get("set"), it.get("number"), it.get("variant"), ck) if x)
         dl = f"{dm['level']} demand" if dm else "demand unknown"
         if tag and sticker and abs(sticker - tag) >= max(0.5, tag * 0.05):
             restick.append((abs(sticker - tag) * qty, f"{label} (×{qty}): {money(tag)} → {money(sticker)}"

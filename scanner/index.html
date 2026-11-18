@@ -246,6 +246,22 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .imp-top .raw { font-size: .85rem; overflow-wrap: anywhere; min-width: 0; }
 .imp-top .dm { flex: none; }
 .imp-row .sel { min-height: 42px; background-color: var(--surface); font-size: .9rem; }
+.dm.cond { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.by-list { display: grid; gap: 10px; }
+.by-row { background: var(--bg); border-radius: 12px; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.by-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.by-head .lr-main { display: grid; gap: 2px; min-width: 0; }
+.by-head b { font-weight: 700; overflow-wrap: anywhere; }
+.by-head small { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.by-row .sel { min-height: 44px; background-color: var(--surface); font-size: .9rem; padding: 0 8px; }
+.by-row input[type="number"] { background: var(--surface); }
+.by-out { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.by-out .stat { background: var(--surface); padding: 8px 10px; }
+.by-out .stat b { font-size: 1.05rem; }
+.by-out .money input { min-height: 38px; padding: 6px 8px 6px 22px; border-radius: 8px; }
+.by-out .money span { left: 9px; }
+.by-out .dm { display: inline-block; margin-top: 3px; }
+@media (max-width: 380px) { .by-out { grid-template-columns: 1fr 1fr; } .by-out .stat:last-child { grid-column: 1 / -1; } }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -483,7 +499,8 @@ a { color: var(--accent); }
         <div class="calc">
           <div class="field"><label class="lbl" for="iv-f-qty">Quantity</label><input id="iv-f-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
           <div class="field"><label class="lbl" for="iv-f-cost">Cost each</label><div class="money"><span>$</span><input id="iv-f-cost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
-          <div class="field"><label class="lbl" for="iv-f-mkt">Market</label><div class="money"><span>$</span><input id="iv-f-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+          <div class="field"><label class="lbl" for="iv-f-cond">Condition</label><select class="sel" id="iv-f-cond"></select></div>
+          <div class="field"><label class="lbl" for="iv-f-mkt">Market (Near Mint)</label><div class="money"><span>$</span><input id="iv-f-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
         </div>
         <div class="iv-f-sticker"><span id="iv-f-demand"></span><span>Sticker <b id="iv-f-stk">$0.00</b></span></div>
         <div class="slot-btns"><button class="btn primary" id="iv-f-add" type="button">Add to inventory</button><button class="mini" id="iv-f-cancel" type="button">Cancel</button></div>
@@ -530,6 +547,44 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       </div>
       <div class="iv-list" id="iv-list"></div>
       <p class="foot">Sticker price follows demand: high-demand cards get 105&ndash;110% of market, others 100&ndash;104%. Demand comes from how many days this week the card&rsquo;s market price moved (it only moves when the card sells) and how close listings are to market. Prices update daily; a card is flagged when its sticker is 5% or more off.</p>
+    </section>
+  </div>
+
+  <div class="view" data-view="buying" hidden>
+    <section class="panel" aria-labelledby="by-h">
+      <label class="lbl" id="by-h">Buying</label>
+      <div class="calc two">
+        <div class="field"><label class="lbl" for="by-pct">Default buy %</label><div class="money pct"><input id="by-pct" type="number" inputmode="decimal" min="0" max="200" step="1" placeholder="70"><span>%</span></div></div>
+        <div class="field"><label class="lbl" for="by-cond">Default condition</label><select class="sel" id="by-cond"></select></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="by-take" type="button" disabled>
+          <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo
+        </button>
+        <button class="btn" id="by-pick" type="button" disabled>
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg>Choose photo
+        </button>
+      </div>
+      <input class="file" id="by-cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+      <input class="file" id="by-lib" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+      <div class="status" id="by-status" role="status"></div>
+      <input id="by-q" type="search" placeholder="Or search name or number to add" autocomplete="off" enterkeyhint="search" aria-label="Search cards to buy">
+      <div class="cands" id="by-res"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="by-list-h">
+      <label class="lbl" id="by-list-h">Cards you&rsquo;re buying</label>
+      <div class="by-list" id="by-list"></div>
+      <p class="sub-note" id="by-empty">No cards yet. Scan or search above to add cards.</p>
+      <div class="stats">
+        <div class="stat"><span>You pay</span><b id="by-pay">$0.00</b><small id="by-n">0 cards</small></div>
+        <div class="stat"><span>Market value</span><b id="by-mkt">$0.00</b><small>For their condition</small></div>
+        <div class="stat"><span>Sticker value</span><b id="by-stk">$0.00</b><small>Recommended prices</small></div>
+        <div class="stat"><span>Potential profit</span><b id="by-profit">$0.00</b><small>If all sell at sticker</small></div>
+      </div>
+      <button class="btn primary" id="by-done" type="button" disabled>Done: add to inventory</button>
+      <div class="status" id="by-msg" role="status"></div>
+      <p class="foot">Condition prices from the Near Mint market: Lightly Played 85%, Moderately Played 70%, Heavily Played 55%, Damaged 40%. You pay = condition market &times; buy %. Sticker = condition market &times; demand markup (100&ndash;110%).</p>
     </section>
   </div>
 
@@ -615,6 +670,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   <a class="dr-sub" href="#transactions" data-link="transactions">Transactions</a>
   <a class="dr-main" href="#inventory" data-mode-link="vending">Vending</a>
   <a class="dr-sub" href="#inventory" data-link="inventory">Inventory</a>
+  <a class="dr-sub" href="#buying" data-link="buying">Buying</a>
   <a class="dr-sub" href="#checkout" data-link="checkout">Checkout</a>
   <a class="dr-sub" href="#shows" data-link="shows">Shows</a>
 </nav>
@@ -634,6 +690,9 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   </button>
   <button class="tab" role="tab" type="button" data-mode="vending" data-go="inventory" aria-selected="false" hidden>
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1"/><rect x="14" y="4" width="7" height="9" rx="1"/><path d="M3 17h18M3 20h18"/></svg>Inventory
+  </button>
+  <button class="tab" role="tab" type="button" data-mode="vending" data-go="buying" aria-selected="false" hidden>
+    <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M16.5 7.5H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H7"/></svg>Buying
   </button>
   <button class="tab" role="tab" type="button" data-mode="vending" data-go="checkout" aria-selected="false" hidden>
     <svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11.2L21 7H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Checkout
@@ -678,7 +737,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     refreshPhotoButtons();
     if ($("q").value) search();
     buildMovers();
-    renderInv(); renderCart();
+    renderInv(); renderCart(); renderBuy();
   }).catch(() => {
     $("asof").textContent = "Couldn't load prices. Reload the page to try again.";
   });
@@ -694,7 +753,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   function refreshPhotoButtons() {
     $("ai").hidden = !sample;
     const on = !!(sample && imgOK && data);
-    $("take").disabled = $("pick").disabled = $("iv-take").disabled = $("iv-pick").disabled = !on;
+    $("take").disabled = $("pick").disabled = $("iv-take").disabled = $("iv-pick").disabled = $("by-take").disabled = $("by-pick").disabled = !on;
     if (sample !== null && !imgOK && data && !$("status").textContent)
       setStatus("Photo scanning isn't available here. Search by name instead.");
   }
@@ -890,7 +949,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   };
 
   // ---------- pages ----------
-  const FLIP = ["scan", "movers", "calculator", "transactions"], VEND = ["inventory", "checkout", "shows"];
+  const FLIP = ["scan", "movers", "calculator", "transactions"], VEND = ["inventory", "buying", "checkout", "shows"];
   const VIEWS = [...FLIP, ...VEND];
   function go(v) {
     if (!VIEWS.includes(v)) { let m = "flipping"; try { m = localStorage.getItem("appMode") || m; } catch {} v = m === "vending" ? "inventory" : "scan"; }
@@ -898,7 +957,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     try { localStorage.setItem("appMode", mode); } catch {}
     for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== v;
     for (const t of document.querySelectorAll(".tab")) { t.hidden = t.dataset.mode !== mode; t.setAttribute("aria-selected", String(t.dataset.go === v)); }
-    $("tabs").style.gridTemplateColumns = "repeat(" + (mode === "vending" ? 3 : 4) + ", 1fr)";
+    $("tabs").style.gridTemplateColumns = "repeat(4, 1fr)";
     $("mode-tag").textContent = mode === "vending" ? "Vending" : "Flipping";
     for (const a of document.querySelectorAll("[data-mode-link]")) a.setAttribute("aria-current", String(a.dataset.modeLink === mode));
     for (const a of document.querySelectorAll("[data-link]")) { if (a.dataset.link === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
@@ -1408,13 +1467,29 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const c = it.cardId != null ? byId.get(it.cardId) : null;
     return c ? c.vars.find((v) => v.variant === it.variant) || null : null;
   }
+  // Condition discounts from the Near Mint market price (typical TCGplayer spreads).
+  const CONDS = [["NM", "Near Mint", 1], ["LP", "Lightly Played", 0.85], ["MP", "Moderately Played", 0.7], ["HP", "Heavily Played", 0.55], ["DMG", "Damaged", 0.4]];
+  function condKey(text) {
+    const s = norm(text);
+    if (!s) return "NM";
+    if (["nm", "lp", "mp", "hp", "dmg"].includes(s)) return s.toUpperCase();
+    if (/\b(dmg|damaged|poor)\b/.test(s)) return "DMG";
+    if (/\b(hp|heavily)\b/.test(s)) return "HP";
+    if (/\b(mp|moderately)\b/.test(s)) return "MP";
+    if (/\b(lp|lightly|excellent)\b/.test(s)) return "LP";
+    if (/\bplayed\b/.test(s)) return "MP";
+    return "NM";
+  }
+  const condName = (k) => (CONDS.find((c) => c[0] === k) || CONDS[0])[1];
+  const condMult = (k) => (CONDS.find((c) => c[0] === k) || CONDS[0])[2];
   function priceInfo(it) {
-    const v = liveVar(it), d = demandOf(v), market = v?.price ?? (it.market > 0 ? +it.market : null);
+    const v = liveVar(it), d = demandOf(v), nm = v?.price ?? (it.market > 0 ? +it.market : null);
+    const ck = condKey(it.cond), market = nm > 0 ? round2(nm * condMult(ck)) : null;
     const auto = market > 0 ? niceRound(market * (d ? d.mult : 1.02)) : null;
     const sticker = it.custom > 0 ? +it.custom : auto;
     const tag = it.tag > 0 ? +it.tag : null;
     const restick = tag != null && sticker != null && Math.abs(sticker - tag) >= Math.max(0.5, tag * 0.05);
-    return { v, d, market, sticker, auto, tag, restick };
+    return { v, d, nm, ck, market, sticker, auto, tag, restick };
   }
   function demandChip(d) {
     const s = document.createElement("span");
@@ -1438,7 +1513,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     salesCol.orderBy("at", "desc").onSnapshot((s) => { saleDocs = s.docs; renderSales(); renderShows(); }, vendUnavailable);
     showsCol.orderBy("date", "desc").onSnapshot((s) => { showDocs = s.docs; renderShowSelect(); renderShows(); }, vendUnavailable);
     $("sh-add").disabled = false;
-    updateCoTotals();
+    updateCoTotals(); buyTotals();
   }
 
   // ---------- inventory: add ----------
@@ -1468,7 +1543,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     $("iv-form").hidden = false;
     $("iv-f-card").hidden = !c; $("iv-f-name-wrap").hidden = !!c;
     $("iv-f-mkt").parentElement.parentElement.hidden = !!c;
-    $("iv-f-qty").value = "1"; $("iv-f-cost").value = ""; $("iv-f-mkt").value = ""; $("iv-f-name-in").value = "";
+    $("iv-f-qty").value = "1"; $("iv-f-cost").value = ""; $("iv-f-mkt").value = ""; $("iv-f-name-in").value = ""; $("iv-f-cond").value = "NM";
     const vb = $("iv-f-vars"); vb.replaceChildren(); vb.hidden = !c || c.vars.length < 2;
     if (c) {
       $("iv-f-name").textContent = c.name;
@@ -1488,11 +1563,13 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     if (!ivPending) return null;
     if (ivPending.manual) {
       const m = parseFloat($("iv-f-mkt").value);
-      return { name: $("iv-f-name-in").value.trim().slice(0, 120), set: "", number: "", variant: "", cardId: null, market: m > 0 ? m : null };
+      return { name: $("iv-f-name-in").value.trim().slice(0, 120), set: "", number: "", variant: "", cardId: null, market: m > 0 ? m : null, cond: condName($("iv-f-cond").value) };
     }
     const c = ivPending.c, v = c.vars[ivPending.vi];
-    return { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price };
+    return { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price, cond: condName($("iv-f-cond").value) };
   }
+  for (const [k, name] of CONDS.map((x) => [x[0], x[1]])) $("iv-f-cond").append(new Option(name, k));
+  $("iv-f-cond").onchange = () => ivPreview();
   function ivPreview() {
     const it = ivDraft(); if (!it) return;
     const pi = priceInfo(it);
@@ -1510,7 +1587,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const pi = priceInfo(it);
     $("iv-f-add").disabled = true;
     try {
-      const same = it.cardId != null ? invDocs.find((d) => { const x = d.data(); return x && x.cardId === it.cardId && x.variant === it.variant && (x.cost ?? null) === cost && !(x.custom > 0); }) : null;
+      const same = it.cardId != null ? invDocs.find((d) => { const x = d.data(); return x && x.cardId === it.cardId && x.variant === it.variant && (x.cost ?? null) === cost && condKey(x.cond) === condKey(it.cond) && !(x.custom > 0); }) : null;
       if (same) await invCol.doc(same.id).update({ qty: (+same.data().qty || 0) + qty });
       else await invCol.doc().set({ ...it, qty, cost, tag: pi.sticker, custom: null, addedAt: Date.now() });
       $("iv-status").className = "status"; $("iv-status").textContent = "Added " + qty + " × " + it.name + " at " + (pi.sticker ? money(pi.sticker) : "no price") + ".";
@@ -1783,10 +1860,10 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       const stk = el("span", "stk", pi.sticker ? money(pi.sticker) : "—");
       stk.append(el("small", null, "Mkt " + (pi.market ? money(pi.market) : "—") + " · ×" + (+it.qty || 0)));
       const tags = el("span", "iv-tags");
-      tags.append(demandChip(pi.d));
+      tags.append(el("span", "dm cond", pi.ck), demandChip(pi.d));
       if (it.custom > 0) tags.append(el("span", "dm low", "Your price"));
       if (pi.restick) tags.append(el("span", "badge", "Re-sticker " + money(pi.tag) + " → " + money(pi.sticker)));
-      row.append(el("span", "n", String(it.name || "Card")), stk, el("span", "s", [it.set, it.number, it.variant, it.cond].filter(Boolean).join(" · ") || "Added by hand"), tags);
+      row.append(el("span", "n", String(it.name || "Card")), stk, el("span", "s", [it.set, it.number, it.variant].filter(Boolean).join(" · ") || "Added by hand"), tags);
       row.onclick = () => { ivOpen = ivOpen === id ? null : id; renderInv(); };
       wrap.append(row);
       if (ivOpen === id) wrap.append(ivEditor(id, it, pi));
@@ -1804,7 +1881,8 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const qty = el("input"); qty.type = "number"; qty.inputMode = "numeric"; qty.min = "0"; qty.step = "1"; qty.value = String(+it.qty || 0);
     const cost = el("input"); cost.type = "number"; cost.inputMode = "decimal"; cost.min = "0"; cost.step = "0.01"; cost.placeholder = "0.00"; if (it.cost != null) cost.value = (+it.cost).toFixed(2);
     const own = el("input"); own.type = "number"; own.inputMode = "decimal"; own.min = "0"; own.step = "0.01"; own.placeholder = pi.auto ? pi.auto.toFixed(2) : "0.00"; if (it.custom > 0) own.value = (+it.custom).toFixed(2);
-    field("Quantity", qty); field("Cost each", cost, true); field("Your price", own, true);
+    const cnd = el("select", "sel"); for (const [k, name] of CONDS.map((x) => [x[0], x[1]])) cnd.append(new Option(name, k)); cnd.value = pi.ck;
+    field("Condition", cnd); field("Quantity", qty); field("Cost each", cost, true); field("Your price", own, true);
     box.append(grid, el("p", "foot", "Leave “Your price” empty to use the demand-based sticker price (" + (pi.auto ? money(pi.auto) : "—") + ")."));
     const act = el("div", "tx-act");
     const save = el("button", "mini", "Save"); save.type = "button";
@@ -1813,7 +1891,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       save.disabled = true;
       try {
         if (q === 0) await invCol.doc(id).delete();
-        else await invCol.doc(id).update({ qty: q, cost: c >= 0 ? c : null, custom: o > 0 ? o : null });
+        else await invCol.doc(id).update({ qty: q, cost: c >= 0 ? c : null, custom: o > 0 ? o : null, cond: condName(cnd.value) });
         ivOpen = null; renderInv();
       } catch { save.disabled = false; save.textContent = "Retry"; }
     };
@@ -1834,6 +1912,148 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     box.append(act);
     return box;
   }
+
+  // ---------- buying ----------
+  let buy = [];
+  try { const d = JSON.parse(localStorage.getItem("buyDraft") || "null"); if (Array.isArray(d)) buy = d.slice(0, 300); } catch {}
+  try { const p = localStorage.getItem("buyPctDefault"); if (p) $("by-pct").value = p; } catch {}
+  for (const [k, name] of CONDS.map((x) => [x[0], x[1]])) $("by-cond").append(new Option(name, k));
+  try { const c = localStorage.getItem("buyCondDefault"); if (c) $("by-cond").value = c; } catch {}
+  $("by-pct").addEventListener("input", () => { try { localStorage.setItem("buyPctDefault", $("by-pct").value); } catch {} });
+  $("by-cond").onchange = () => { try { localStorage.setItem("buyCondDefault", $("by-cond").value); } catch {} };
+  const saveBuy = () => { try { localStorage.setItem("buyDraft", JSON.stringify(buy)); } catch {} };
+  function buyCalc(b) {
+    const it = { cardId: b.cardId, variant: b.variant, market: b.nm, cond: condName(b.ck) };
+    const pi = priceInfo(it);
+    const pay = pi.market > 0 && b.pct >= 0 ? round2(pi.market * b.pct / 100) : null;
+    return { pi, pay };
+  }
+  function buyAdd(c, v) {
+    const pct = parseFloat($("by-pct").value);
+    buy.unshift({ cardId: c.id, variant: v.variant, name: c.name, set: c.set, number: c.number, nm: v.price, ck: $("by-cond").value || "NM", qty: 1, pct: pct >= 0 ? pct : 70 });
+    saveBuy(); renderBuy();
+    $("by-msg").textContent = "";
+  }
+  function buyRows(rows) {
+    const box = $("by-res"); box.replaceChildren();
+    for (const [c, v] of rows.slice(0, 12)) {
+      const b = el("button", "cand"); b.type = "button";
+      b.append(el("span", "n", "+ " + c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant));
+      b.onclick = () => { buyAdd(c, v); b.disabled = true; b.firstChild.textContent = "✓ " + c.name; };
+      box.append(b);
+    }
+  }
+  let byT;
+  $("by-q").addEventListener("input", () => { clearTimeout(byT); byT = setTimeout(() => {
+    const qs = tokens($("by-q").value); if (!qs.length || !data) { $("by-res").replaceChildren(); return; }
+    const hits = [];
+    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
+    const rows = []; for (const c of hits) { for (const v of c.vars) rows.push([c, v]); if (rows.length >= 12) break; }
+    buyRows(rows);
+    if (!rows.length) $("by-res").append(el("p", "sub-note", "No cards match that search."));
+  }, 150); });
+  $("by-take").onclick = () => $("by-cam").click();
+  $("by-pick").onclick = () => $("by-lib").click();
+  $("by-cam").onchange = $("by-lib").onchange = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = ""; if (!f || !sample) return;
+    const st = $("by-status"); st.className = "status"; st.replaceChildren(el("span", "spin"), " Identifying card (usually 5–20 seconds)");
+    $("by-take").disabled = $("by-pick").disabled = true;
+    try {
+      const g = await sample.json(CARD_PROMPT, { images: f });
+      if (g?.is_pokemon_card === false) { st.textContent = "That doesn't look like a Pokémon card."; return; }
+      const ranked = rank(g || {});
+      if (!ranked.length) { st.className = "status err"; st.textContent = "No match found. Try searching by name."; return; }
+      const want = g.first_edition ? "1st edition" : norm(g.finish);
+      const rows = [];
+      for (const c of ranked.slice(0, 4)) for (const v of c.vars.slice().sort((a, b) => (norm(b.variant) === want) - (norm(a.variant) === want))) rows.push([c, v]);
+      st.textContent = "Read as " + [g.name, g.number].filter(Boolean).join(" ") + ". Tap the right one to add it:";
+      buyRows(rows);
+    } catch (e2) {
+      st.className = "status err";
+      st.textContent = e2?.code === "not_granted" ? "Card recognition needs your permission to use Claude. Search by name instead." : "Couldn't read the card. Try a closer photo, or search by name.";
+    } finally { refreshPhotoButtons(); }
+  };
+  function renderBuy() {
+    const list = $("by-list"); list.replaceChildren();
+    buy.forEach((b, i) => {
+      const row = el("div", "by-row");
+      const head = el("div", "by-head");
+      const t = el("div", "lr-main"); t.append(el("b", null, b.name), el("small", null, [b.set, b.number, b.variant].filter(Boolean).join(" · ")));
+      const rm = el("button", "mini", "✕"); rm.type = "button"; rm.setAttribute("aria-label", "Remove " + b.name);
+      rm.onclick = () => { buy.splice(i, 1); saveBuy(); renderBuy(); };
+      head.append(t, rm);
+      const ctl = el("div", "calc");
+      const f = (label, node) => { const w = el("div", "field"); const l = el("label", "lbl", label); const id = "by-" + i + "-" + label.replace(/\W/g, ""); node.id = id; l.htmlFor = id; w.append(l, node); ctl.append(w); return node; };
+      const cs = el("select", "sel"); for (const [k, name] of CONDS.map((x) => [x[0], x[1]])) cs.append(new Option(name, k)); cs.value = b.ck;
+      f("Condition", cs);
+      const qty = el("input"); qty.type = "number"; qty.inputMode = "numeric"; qty.min = "1"; qty.step = "1"; qty.value = String(b.qty); f("Qty", qty);
+      const pw = el("div", "money pct"); const pct = el("input"); pct.type = "number"; pct.inputMode = "decimal"; pct.min = "0"; pct.step = "1"; pct.value = String(b.pct); pw.append(pct, el("span", null, "%"));
+      { const w = el("div", "field"); const l = el("label", "lbl", "Buy %"); pct.id = "by-" + i + "-pct"; l.htmlFor = pct.id; w.append(l, pw); ctl.append(w); }
+      const out = el("div", "by-out");
+      const mk = el("div", "stat"), py = el("div", "stat"), sk = el("div", "stat");
+      const mkB = el("b"), mkS = el("small"), pyIn = el("input"), skB = el("b"), skS = el("small");
+      mk.append(el("span", null, "Market"), mkB, mkS);
+      const pyW = el("div", "money good"); pyIn.type = "number"; pyIn.inputMode = "decimal"; pyIn.min = "0"; pyIn.step = "0.01"; pyIn.setAttribute("aria-label", "You pay each for " + b.name); pyW.append(el("span", null, "$"), pyIn);
+      py.append(el("span", null, "You pay each"), pyW);
+      sk.append(el("span", null, "Sticker"), skB, skS);
+      out.append(mk, py, sk);
+      const paint = (keepPay) => {
+        const { pi, pay } = buyCalc(b);
+        mkB.textContent = pi.market ? money(pi.market) : "—";
+        mkS.textContent = b.ck === "NM" ? "Near Mint" : condName(b.ck) + " · NM " + (pi.nm ? money(pi.nm) : "—");
+        if (!keepPay) pyIn.value = pay != null ? pay.toFixed(2) : "";
+        skB.textContent = pi.sticker ? money(pi.sticker) : "—";
+        skS.replaceChildren(demandChip(pi.d));
+        buyTotals();
+      };
+      cs.onchange = () => { b.ck = cs.value; saveBuy(); paint(); };
+      qty.oninput = () => { b.qty = Math.max(1, Math.round(parseFloat(qty.value) || 1)); saveBuy(); buyTotals(); };
+      pct.oninput = () => { const v = parseFloat(pct.value); b.pct = v >= 0 ? v : 0; saveBuy(); paint(); };
+      pyIn.oninput = () => {
+        const { pi } = buyCalc(b), v = parseFloat(pyIn.value);
+        if (pi.market > 0 && v >= 0) { b.pct = round2(v / pi.market * 100); pct.value = String(b.pct); saveBuy(); }
+        buyTotals();
+      };
+      row.append(head, ctl, out); list.append(row);
+      paint();
+    });
+    $("by-empty").hidden = buy.length > 0;
+    buyTotals();
+  }
+  function buyTotals() {
+    let n = 0, pay = 0, mkt = 0, stk = 0;
+    for (const b of buy) { const { pi, pay: p } = buyCalc(b); n += b.qty; pay += (p || 0) * b.qty; mkt += (pi.market || 0) * b.qty; stk += (pi.sticker || 0) * b.qty; }
+    $("by-pay").textContent = money(pay); $("by-n").textContent = n + (n === 1 ? " card" : " cards");
+    $("by-mkt").textContent = money(mkt); $("by-stk").textContent = money(stk);
+    const pr = stk - pay; $("by-profit").textContent = (pr < 0 ? "−" : "") + money(Math.abs(pr)); $("by-profit").className = pr > 0 ? "up" : pr < 0 ? "down" : "";
+    $("by-done").textContent = n ? "Done: add " + n + (n === 1 ? " card" : " cards") + " to inventory" : "Done: add to inventory";
+    $("by-done").disabled = !n || !invCol;
+  }
+  $("by-done").onclick = async () => {
+    if (!invCol || !buy.length) return;
+    $("by-done").disabled = true;
+    let added = 0, spent = 0;
+    try {
+      while (buy.length) {
+        const b = buy[buy.length - 1];
+        const { pi, pay } = buyCalc(b);
+        const it = { name: b.name, set: b.set, number: b.number, variant: b.variant, cardId: b.cardId, market: pi.nm ?? b.nm, cond: condName(b.ck), cost: pay };
+        const same = invDocs.find((d) => { const x = d.data(); return x && x.cardId === it.cardId && x.variant === it.variant && (x.cost ?? null) === (it.cost ?? null) && condKey(x.cond) === b.ck && !(x.custom > 0); });
+        if (same) await invCol.doc(same.id).update({ qty: (+same.data().qty || 0) + b.qty });
+        else await invCol.doc().set({ ...it, qty: b.qty, tag: pi.sticker ?? null, custom: null, addedAt: Date.now() });
+        added += b.qty; spent += (pay || 0) * b.qty;
+        buy.pop(); saveBuy();
+      }
+      $("by-msg").className = "status"; $("by-msg").textContent = "Added " + added + (added === 1 ? " card" : " cards") + " to inventory (paid " + money(spent) + ").";
+      $("by-q").value = ""; $("by-res").replaceChildren(); $("by-status").textContent = "";
+    } catch (e) {
+      $("by-msg").className = "status err";
+      $("by-msg").textContent = (e?.code === "quota_exceeded" ? "Storage is full. " : "Couldn't finish. ") + added + " cards were added; the rest are still in the list.";
+    } finally { renderBuy(); }
+  };
+
+  renderBuy();
 
   // ---------- checkout ----------
   let cart = [], payMethod = "cash", discEdited = "pct";
@@ -1857,7 +2077,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       const pi = priceInfo(it), inCart = cart.find((c) => c.invId === id)?.qty || 0, left = (+it.qty || 0) - inCart;
       const b = el("button", "cand"); b.type = "button"; b.disabled = left <= 0;
       b.append(el("span", "n", (left > 0 ? "+ " : "") + it.name), el("span", "p", pi.sticker ? money(pi.sticker) : "—"),
-        el("span", "s", [it.set, it.number, it.variant].filter(Boolean).join(" · ") + " · " + left + " left"));
+        el("span", "s", [it.set, it.number, it.variant, condKey(it.cond)].filter(Boolean).join(" · ") + " · " + left + " left"));
       b.onclick = () => { addToCart(id, it, pi); renderCoRes(); };
       box.append(b);
     }
@@ -1865,7 +2085,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   function addToCart(id, it, pi) {
     const line = cart.find((c) => c.invId === id);
     if (line) line.qty++;
-    else cart.push({ invId: id, name: it.name, set: it.set || "", number: it.number || "", variant: it.variant || "", cardId: it.cardId ?? null, cost: it.cost ?? null, qty: 1, price: pi.sticker || 0 });
+    else cart.push({ invId: id, name: it.name, set: it.set || "", number: it.number || "", variant: it.variant || "", cardId: it.cardId ?? null, cost: it.cost ?? null, cond: it.cond ?? null, qty: 1, price: pi.sticker || 0 });
     renderCart();
   }
   function renderCart() {
@@ -1874,7 +2094,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     cart.forEach((c, i) => {
       const max = +(inv.get(c.invId)?.qty || 0);
       const row = el("div", "co-row");
-      const main = el("div", "lr-main"); main.append(el("b", null, c.name), el("small", null, [c.set, c.number, c.variant].filter(Boolean).join(" · ")));
+      const main = el("div", "lr-main"); main.append(el("b", null, c.name), el("small", null, [c.set, c.number, c.variant, condKey(c.cond)].filter(Boolean).join(" · ")));
       const mw = el("div", "money"); const pr = el("input"); pr.type = "number"; pr.inputMode = "decimal"; pr.min = "0"; pr.step = "0.01"; pr.value = (+c.price).toFixed(2); pr.setAttribute("aria-label", c.name + " price each");
       pr.oninput = () => { c.price = parseFloat(pr.value) || 0; updateCoTotals(); };
       mw.append(el("span", null, "$"), pr);
@@ -1914,7 +2134,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     if (!(total >= 0)) { $("co-total").focus(); return; }
     const inv = invMap();
     for (const c of cart) if (c.qty > (+(inv.get(c.invId)?.qty) || 0)) { $("co-msg").className = "status err"; $("co-msg").textContent = c.name + ": not enough left in inventory."; return; }
-    const items = cart.map((c) => ({ invId: c.invId, name: c.name, set: c.set, number: c.number, variant: c.variant, cardId: c.cardId, qty: c.qty, price: +c.price || 0, cost: c.cost }));
+    const items = cart.map((c) => ({ invId: c.invId, name: c.name, set: c.set, number: c.number, variant: c.variant, cardId: c.cardId, qty: c.qty, price: +c.price || 0, cost: c.cost, cond: c.cond ?? null }));
     const sale = { at: Date.now(), showId: $("co-show").value || null, method: payMethod, items, subtotal: sub, total: round2(total),
       discountPct: sub > 0 ? round2((1 - total / sub) * 100) : 0, cogs: round2(items.reduce((a, x) => a + (+x.cost || 0) * x.qty, 0)) };
     $("co-done").disabled = true;
@@ -1936,7 +2156,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       const cur = inv.get(x.invId);
       if (cur) await invCol.doc(x.invId).update({ qty: (+cur.qty || 0) + (+x.qty || 0) });
       else {
-        const it = { name: x.name, set: x.set || "", number: x.number || "", variant: x.variant || "", cardId: x.cardId ?? null, cost: x.cost ?? null, qty: +x.qty || 1, custom: null, addedAt: Date.now() };
+        const it = { name: x.name, set: x.set || "", number: x.number || "", variant: x.variant || "", cardId: x.cardId ?? null, cost: x.cost ?? null, cond: x.cond ?? null, qty: +x.qty || 1, custom: null, addedAt: Date.now() };
         it.tag = priceInfo(it).sticker; it.market = priceInfo(it).market;
         await invCol.doc(x.invId).set(it);
       }
