@@ -365,7 +365,7 @@ a { color: var(--accent); }
       <p class="foot" id="p-note">Type in any two boxes and the third works itself out (shown in green).</p>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
-      <p class="foot">&ldquo;Sold for&rdquo; starts at the payout. Not sold yet? Clear &ldquo;Sold for&rdquo; and record it now; mark it sold later in Transactions.</p>
+      <p class="foot" id="p-hint">&ldquo;Sold for&rdquo; starts at the payout. Not sold yet? Clear &ldquo;Sold for&rdquo; and record it now; mark it sold later in Transactions.</p>
     </section>
   </div>
 
@@ -705,17 +705,21 @@ a { color: var(--accent); }
   });
 
   // ---------- profit ----------
-  // Sold for follows Payout until you type your own Sold for; I paid is always yours to enter.
-  let soldEdited = false;
+  // Payout fills one profit box until you type your own value there:
+  // Sold for for a single card, I paid for a lot.
+  let soldEdited = false, lotMode = false, lot = [];
+  const linkedId = () => (lotMode ? "p-paid" : "p-sold");
   function syncPaid() {
-    if (!soldEdited) { $("p-sold").value = $("c-pay").value; recentB = touch(recentB, "p-sold"); }
+    const L = linkedId();
+    if (!soldEdited) { $(L).value = $("c-pay").value; recentB = touch(recentB, L); }
     solveB();
   }
   function solveB() {
     const t = targetOf(B, recentB), paid = num("p-paid"), sold = num("p-sold"), mk = num("p-profit");
     if (t === "p-profit") $("p-profit").value = paid >= 0 && sold >= 0 ? fix(sold - paid) : "";
-    else if (t === "p-sold") { $("p-sold").value = paid >= 0 && !isNaN(mk) ? fix(paid + mk) : ""; soldEdited = $("p-sold").value !== ""; }
+    else if (t === "p-sold") $("p-sold").value = paid >= 0 && !isNaN(mk) ? fix(paid + mk) : "";
     else $("p-paid").value = sold >= 0 && !isNaN(mk) ? fix(sold - mk) : "";
+    if (t === linkedId()) soldEdited = $(t).value !== "";
     for (const id of ["p-paid", "p-sold"]) $(id).parentElement.classList.toggle("good", id === t);
     const d = num("p-profit"), pd = num("p-paid"), box = $("p-profit-box");
     box.classList.toggle("good", !isNaN(d) && d >= 0);
@@ -725,15 +729,16 @@ a { color: var(--accent); }
       : HINT;
   }
   for (const id of B) $(id).addEventListener("input", () => {
-    if (id === "p-sold") soldEdited = $("p-sold").value !== "";
+    if (id === linkedId()) soldEdited = $(id).value !== "";
     recentB = touch(recentB, id); solveB();
   });
   // ---------- lot ----------
-  let lotMode = false, lot = [];
   try {
     const d = JSON.parse(localStorage.getItem("lotDraft") || "null");
     if (d && Array.isArray(d.items)) { lot = d.items.slice(0, 100); lotMode = d.mode === true; }
   } catch {}
+  const SINGLE_HINT = "“Sold for” starts at the payout. Not sold yet? Clear “Sold for” and record it now; mark it sold later in Transactions.";
+  const LOT_HINT = "“I paid” starts at the lot payout. Leave “Sold for” empty until the lot sells, then mark it sold in Transactions.";
   const saveLot = () => { try { localStorage.setItem("lotDraft", JSON.stringify({ mode: lotMode, items: lot })); } catch {} };
   const lotTotal = () => round2(lot.reduce((a, x) => a + (x.market > 0 ? x.market : 0), 0));
   function lotChanged() {
@@ -781,7 +786,8 @@ a { color: var(--accent); }
     lotMode = mode === "lot";
     for (const b of document.querySelectorAll(".seg-b[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
     $("lot").hidden = !lotMode;
-    recentB = ["p-sold", "p-paid"]; soldEdited = false; $("p-paid").value = ""; $("p-profit").value = "";
+    recentB = ["p-sold", "p-paid"]; soldEdited = false; $("p-paid").value = ""; $("p-sold").value = ""; $("p-profit").value = "";
+    $("p-hint").textContent = lotMode ? LOT_HINT : SINGLE_HINT;
     if (lotMode) lotChanged();
     else if (sel) { calcKey = null; render(); }
     else { $("p-card").value = ""; $("c-market").value = ""; calc(); }
@@ -824,7 +830,7 @@ a { color: var(--accent); }
 
   function resetProfit() {
     recentB = ["p-sold", "p-paid"]; soldEdited = false;
-    $("p-paid").value = ""; $("p-profit").value = ""; syncPaid();
+    $("p-paid").value = ""; $("p-sold").value = ""; $("p-profit").value = ""; syncPaid();
   }
   solveA();
 
