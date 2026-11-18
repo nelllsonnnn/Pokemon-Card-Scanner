@@ -265,6 +265,7 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .del-all { display: grid; gap: 8px; justify-items: start; border-top: 1px solid var(--line); padding-top: 12px; }
 .del-confirm { display: grid; gap: 8px; background: var(--bad-bg); border-radius: 10px; padding: 10px 12px; }
 .del-confirm p { margin: 0; color: var(--fg); font-size: .9rem; }
+.imp-warn { color: var(--bad); font-size: .8rem; font-weight: 600; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -1638,7 +1639,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     pid: ["productid", "tcgproductid", "tcgplayerproductid"],
     name: ["name", "cardname", "card", "productname", "product", "title", "cardtitle"],
     set: ["set", "setname", "expansion", "series"],
-    number: ["number", "cardnumber", "collectornumber", "no", "num"],
+    number: ["number", "cardnumber", "collectornumber", "num", "cardnum", "setnumber", "numberinset", "cardnumberinset"],
     variant: ["variant", "printing", "finish", "foil", "version", "subtype"],
     cond: ["condition", "cond"],
     qty: ["quantity", "qty", "count", "totalquantity", "amount", "copies"],
@@ -1712,12 +1713,15 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     if (!list.length && r.number) {
       const np = numParts(r.number);
       const pool = np.n ? byNum.get(np.n) || [] : [];
+      // The card number decides: only cards with this number are candidates. Name, set and set size pick between them,
+      // so a card whose name is written differently still matches when its number and set do.
       const scored = pool.map((c) => {
-        const ov = nt.filter((t) => c.nameTok.includes(t)).length;
-        return { c, ov, s: ov * 12 + (np.total && c.total === np.total ? 20 : 0) + setSim(c) + hasWant(c) };
-      }).filter((x) => x.ov > 0).sort((a, b) => b.s - a.s);
+        const ov = nt.filter((t) => c.nameTok.includes(t)).length, ss = setSim(c), tot = !!(np.total && c.total === np.total);
+        return { c, ov, ss, tot, s: ov * 12 + (tot ? 20 : 0) + ss + hasWant(c) };
+      }).filter((x) => x.ov > 0 || x.ss > 0 || x.tot).sort((a, b) => b.s - a.s);
       list = scored.map((x) => x.c);
-      if (scored.length && scored[0].ov >= Math.ceil(nt.length / 2) && (scored.length === 1 || scored[0].s > scored[1].s)) sure = true;
+      const top = scored[0];
+      if (top && (top.ov >= Math.ceil(nt.length / 2) || (top.ss > 0 && top.tot)) && (scored.length === 1 || top.s > scored[1].s)) sure = true;
     }
     if (!list.length && nt.length) {
       list = rank({ name: r.name, number: r.number, set: r.set });
@@ -1744,7 +1748,8 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     if (!data) { impMsg("Prices are still loading. Try again in a moment.", true); return; }
     const rows = parseCSV(text);
     if (rows.length < 2) { impMsg("No rows found. The first line should be a header row, like the example.", true); return; }
-    const head = rows[0].map((h) => (h.trim() === "#" ? "number" : norm(h).replace(/ /g, "")));
+    // "#", "Card #", "No.", "Card No." all mean the card number
+    const head = rows[0].map((h) => norm(String(h).replace(/#/g, " number ").replace(/\bno\b\.?/gi, " number ")).replace(/ /g, ""));
     const col = {}, used = new Set();
     for (const [k, names] of Object.entries(IMP_COLS)) { const i = head.findIndex((h, j) => !used.has(j) && names.includes(h)); if (i >= 0) { col[k] = i; used.add(i); } }
     if (col.name == null) { impMsg("Couldn't find a Name column. Add a header called Name (or Card / Product Name).", true); return; }
@@ -1785,7 +1790,15 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       sel.append(new Option("Add as typed (no price data)" + (r.market ? " — market " + money(r.market) : ""), "hand"), new Option("Skip this row", "skip"));
       sel.value = String(x.pick);
       sel.onchange = () => { x.pick = sel.value === "hand" || sel.value === "skip" ? sel.value : +sel.value; if (x.status !== "ok") x.status = x.status === "none" && sel.value === "skip" ? "none" : x.status; updateImpBtn(); };
-      row.append(top, sel); list.append(row);
+      const warn = el("small", "imp-warn");
+      const checkNum = () => {
+        const o = typeof x.pick === "number" ? x.opts[x.pick] : null;
+        const bad = r.number && o && numParts(o[0].number).n !== numParts(r.number).n;
+        warn.textContent = bad ? "Card number " + o[0].number + " doesn't match your file (" + r.number + ")" : "";
+        warn.hidden = !bad;
+      };
+      sel.addEventListener("change", checkNum); checkNum();
+      row.append(top, sel, warn); list.append(row);
     }
     if (shown.length > 300) list.append(el("p", "sub-note", (shown.length - 300) + " more rows not shown; they will be imported as matched."));
     if (!shown.length) list.append(el("p", "sub-note", "No rows here."));
