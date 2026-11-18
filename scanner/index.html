@@ -237,6 +237,15 @@ input[type="date"] { width: 100%; font: 400 1rem var(--font-body); padding: 10px
 .sale { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
 .iv-edit .sale { background: var(--surface); border: 1px solid var(--line); }
 .sale-items { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.tpl { margin: 0; background: var(--bg); border-radius: 10px; padding: 10px 12px; font: .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-x: auto; white-space: pre; }
+textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 10px 12px; resize: vertical; }
+.imp-review { display: grid; gap: 10px; }
+.imp-list { display: grid; gap: 8px; }
+.imp-row { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.imp-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.imp-top .raw { font-size: .85rem; overflow-wrap: anywhere; min-width: 0; }
+.imp-top .dm { flex: none; }
+.imp-row .sel { min-height: 42px; background-color: var(--surface); font-size: .9rem; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -466,7 +475,7 @@ a { color: var(--accent); }
       <div class="status" id="iv-status" role="status"></div>
       <input id="iv-q" type="search" placeholder="Or search name or number" autocomplete="off" enterkeyhint="search" aria-label="Search cards to add">
       <div class="cands" id="iv-res"></div>
-      <button class="mini" id="iv-manual" type="button">Add a card by hand</button>
+      <div class="slot-btns"><button class="mini" id="iv-manual" type="button">Add a card by hand</button><button class="mini" id="iv-import" type="button">Import CSV</button></div>
       <div class="iv-form" id="iv-form" hidden>
         <div class="iv-f-card" id="iv-f-card"><b id="iv-f-name"></b><small id="iv-f-meta"></small></div>
         <div class="field" id="iv-f-name-wrap" hidden><label class="lbl" for="iv-f-name-in">Card name</label><input id="iv-f-name-in" type="text" maxlength="120" placeholder="e.g. Charizard ex 199/165"></div>
@@ -478,6 +487,36 @@ a { color: var(--accent); }
         </div>
         <div class="iv-f-sticker"><span id="iv-f-demand"></span><span>Sticker <b id="iv-f-stk">$0.00</b></span></div>
         <div class="slot-btns"><button class="btn primary" id="iv-f-add" type="button">Add to inventory</button><button class="mini" id="iv-f-cancel" type="button">Cancel</button></div>
+      </div>
+    </section>
+
+    <section class="panel" id="iv-imp" aria-labelledby="iv-imp-h" hidden>
+      <label class="lbl" id="iv-imp-h">Import from a spreadsheet (CSV)</label>
+      <p class="sub-note">One card per row, with a header row. Export it from Google Sheets, Excel, Numbers or another app as CSV. Only <b>Name</b> is required; <b>Number</b> and <b>Set</b> make matching exact.</p>
+      <pre class="tpl" id="iv-tpl">Name,Set,Number,Variant,Condition,Quantity,Cost,Sticker
+Charizard ex,Obsidian Flames,223/197,Holofoil,Near Mint,1,45.00,
+Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
+      <div class="slot-btns"><button class="mini" id="iv-tpl-copy" type="button">Copy example</button></div>
+      <p class="foot">Columns can be in any order and extra columns are ignored. Quantity defaults to 1. Cost is what you paid for each. Sticker is the price already on the card; leave it empty to use the suggested price. Add a &ldquo;My price&rdquo; column to fix a card&rsquo;s price instead of using demand pricing.</p>
+      <div class="row">
+        <button class="btn primary" id="imp-file-btn" type="button">Choose CSV file</button>
+        <button class="btn" id="imp-paste-btn" type="button">Paste instead</button>
+      </div>
+      <input class="file" id="imp-file" type="file" accept=".csv,text/csv,text/plain,.txt,.tsv,text/tab-separated-values" tabindex="-1" aria-hidden="true">
+      <div class="field" id="imp-paste-wrap" hidden>
+        <label class="lbl" for="imp-text">Paste CSV</label>
+        <textarea id="imp-text" rows="6" placeholder="Name,Set,Number,Quantity,Cost"></textarea>
+        <div class="slot-btns"><button class="mini" id="imp-read" type="button">Read pasted text</button></div>
+      </div>
+      <div class="status" id="imp-msg" role="status"></div>
+      <div class="imp-review" id="imp-review" hidden>
+        <div class="chips" role="group" aria-label="Show rows">
+          <button class="var" type="button" data-impf="all" aria-pressed="true">All</button>
+          <button class="var" type="button" data-impf="check" aria-pressed="false">To check</button>
+          <button class="var" type="button" data-impf="none" aria-pressed="false">No match</button>
+        </div>
+        <div class="imp-list" id="imp-list"></div>
+        <div class="slot-btns"><button class="btn primary" id="imp-go" type="button">Import</button><button class="mini" id="imp-cancel" type="button">Cancel</button></div>
       </div>
     </section>
 
@@ -1506,6 +1545,207 @@ a { color: var(--accent); }
     } finally { refreshPhotoButtons(); }
   };
 
+  // ---------- inventory: CSV import ----------
+  const IMP_COLS = {
+    pid: ["productid", "tcgproductid", "tcgplayerproductid"],
+    name: ["name", "cardname", "card", "productname", "product", "title", "cardtitle"],
+    set: ["set", "setname", "expansion", "series"],
+    number: ["number", "cardnumber", "collectornumber", "no", "num"],
+    variant: ["variant", "printing", "finish", "foil", "version", "subtype"],
+    cond: ["condition", "cond"],
+    qty: ["quantity", "qty", "count", "totalquantity", "amount", "copies"],
+    cost: ["cost", "costeach", "unitcost", "paid", "pricepaid", "purchaseprice", "buyprice", "averagecostpaid", "costbasis"],
+    tag: ["sticker", "stickerprice", "currentsticker", "tag", "tagprice", "listprice", "askingprice", "sellprice", "sellingprice"],
+    custom: ["myprice", "yourprice", "fixedprice", "customprice"],
+    market: ["market", "marketprice", "tcgmarketprice", "marketvalue"],
+  };
+  let impRows = [], impFilter = "all", byNum = null;
+  $("iv-import").onclick = () => { const p = $("iv-imp"); p.hidden = !p.hidden; if (!p.hidden) p.scrollIntoView({ block: "start" }); };
+  $("iv-tpl-copy").onclick = async () => {
+    const b = $("iv-tpl-copy");
+    try { await navigator.clipboard.writeText($("iv-tpl").textContent); b.textContent = "Copied"; }
+    catch { const r = document.createRange(); r.selectNodeContents($("iv-tpl")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected: copy it now"; }
+    setTimeout(() => { b.textContent = "Copy example"; }, 2500);
+  };
+  $("imp-file-btn").onclick = () => $("imp-file").click();
+  $("imp-paste-btn").onclick = () => { $("imp-paste-wrap").hidden = false; $("imp-text").focus(); };
+  $("imp-file").onchange = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+    if (f.size > 5e6) { impMsg("That file is over 5 MB. Split it into smaller files.", true); return; }
+    try { impLoad(await f.text()); } catch { impMsg("Couldn't read that file. Save it as CSV and try again.", true); }
+  };
+  $("imp-read").onclick = () => impLoad($("imp-text").value);
+  $("imp-cancel").onclick = () => { impRows = []; $("imp-review").hidden = true; impMsg(""); };
+  for (const b of document.querySelectorAll("[data-impf]")) b.onclick = () => {
+    impFilter = b.dataset.impf;
+    for (const x of document.querySelectorAll("[data-impf]")) x.setAttribute("aria-pressed", String(x === b));
+    renderImp();
+  };
+  function impMsg(t, err) { $("imp-msg").className = "status" + (err ? " err" : ""); $("imp-msg").textContent = t; }
+
+  function parseCSV(text) {
+    text = String(text || "").replace(/^﻿/, "");
+    const first = text.split(/\r?\n/, 1)[0] || "";
+    const delim = [",", ";", "\t"].map((d) => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+    const rows = []; let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === delim) { row.push(f); f = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); f = ""; if (row.some((x) => x.trim() !== "")) rows.push(row); row = [];
+      } else f += ch;
+    }
+    row.push(f); if (row.some((x) => x.trim() !== "")) rows.push(row);
+    return rows;
+  }
+  const impNum = (s) => { const v = parseFloat(String(s || "").replace(/[^0-9.\-]/g, "")); return isFinite(v) ? v : null; };
+  function variantWanted(text) {
+    const t = norm(text);
+    if (!t) return "";
+    if (t.includes("reverse")) return "reverse holofoil";
+    if (/\b(1st|first) ed/.test(t)) return t.includes("holo") ? "1st edition holofoil" : "1st edition";
+    if (t.includes("unlimited") && t.includes("holo")) return "unlimited holofoil";
+    if (t.includes("holo") || /\bfoil\b/.test(t)) return "holofoil";
+    if (/\b(normal|non holo|nonholo|regular)\b/.test(t)) return "normal";
+    return "";
+  }
+  function impMatch(r) {
+    if (!byNum) { byNum = new Map(); for (const c of cards) { const a = byNum.get(c.n); if (a) a.push(c); else byNum.set(c.n, [c]); } }
+    let list = [], sure = false;
+    if (r.pid != null) { const c = byId.get(r.pid); if (c) { list = [c]; sure = true; } }
+    const nt = tokens(r.name), st = tokens(r.set);
+    const want = variantWanted(r.variant + " " + r.cond);
+    // set similarity: shared words count, extra words in the catalog's set name (e.g. "Shadowless") count against
+    const setSim = (c) => !st.length ? 0 : Math.min(24, st.filter((t) => c.setTok.includes(t)).length * 6) - 3 * c.setTok.filter((t) => !st.includes(t) && !/^(sv|swsh|sm|xy|bw|me)\d*$/.test(t)).length;
+    const hasWant = (c) => want && c.vars.some((v) => norm(v.variant) === want) ? 8 : 0;
+    if (!list.length && r.number) {
+      const np = numParts(r.number);
+      const pool = np.n ? byNum.get(np.n) || [] : [];
+      const scored = pool.map((c) => {
+        const ov = nt.filter((t) => c.nameTok.includes(t)).length;
+        return { c, ov, s: ov * 12 + (np.total && c.total === np.total ? 20 : 0) + setSim(c) + hasWant(c) };
+      }).filter((x) => x.ov > 0).sort((a, b) => b.s - a.s);
+      list = scored.map((x) => x.c);
+      if (scored.length && scored[0].ov >= Math.ceil(nt.length / 2) && (scored.length === 1 || scored[0].s > scored[1].s)) sure = true;
+    }
+    if (!list.length && nt.length) {
+      list = rank({ name: r.name, number: r.number, set: r.set });
+      // no number: among close name matches, prefer the right set, then the version priced nearest to the cost or sticker
+      const ref = r.tag > 0 ? r.tag : r.cost > 0 ? r.cost : null, qn = norm(r.name);
+      const pool = list.slice(0, 12).filter((c) => norm(c.name).startsWith(qn));
+      if (pool.length > 1) {
+        const near = (c) => ref ? Math.min(...c.vars.map((v) => Math.abs(Math.log((v.price || 0.01) / ref)))) : 0;
+        pool.sort((a, b) => (setSim(b) + hasWant(b)) - (setSim(a) + hasWant(a)) || near(a) - near(b));
+        list = [...pool, ...list.filter((c) => !pool.includes(c))];
+      }
+    }
+    const vs = (v) => { const n = norm(v.variant); return !want ? 0 : n === want ? 2 : n.includes(want) ? 1 : 0; };
+    const opts = [];
+    for (const c of list.slice(0, 4)) for (const v of c.vars.slice().sort((a, b) => vs(b) - vs(a))) opts.push([c, v]);
+    if (opts.length) {
+      const top = list[0];
+      const varSure = top.vars.length === 1 || (want && top.vars.some((v) => norm(v.variant) === want));
+      return { opts, pick: 0, status: sure && varSure ? "ok" : "check" };
+    }
+    return { opts, pick: "hand", status: "none" };
+  }
+  function impLoad(text) {
+    if (!data) { impMsg("Prices are still loading. Try again in a moment.", true); return; }
+    const rows = parseCSV(text);
+    if (rows.length < 2) { impMsg("No rows found. The first line should be a header row, like the example.", true); return; }
+    const head = rows[0].map((h) => (h.trim() === "#" ? "number" : norm(h).replace(/ /g, "")));
+    const col = {}, used = new Set();
+    for (const [k, names] of Object.entries(IMP_COLS)) { const i = head.findIndex((h, j) => !used.has(j) && names.includes(h)); if (i >= 0) { col[k] = i; used.add(i); } }
+    if (col.name == null) { impMsg("Couldn't find a Name column. Add a header called Name (or Card / Product Name).", true); return; }
+    const ignored = rows[0].filter((_, j) => !used.has(j) && rows[0][j].trim()).map((h) => h.trim());
+    const get = (row, k) => (col[k] != null ? String(row[col[k]] ?? "").trim() : "");
+    impRows = [];
+    for (const row of rows.slice(1, 2001)) {
+      const r = {
+        name: get(row, "name").slice(0, 120), set: get(row, "set").slice(0, 80), number: get(row, "number").slice(0, 20),
+        variant: get(row, "variant").slice(0, 40), cond: get(row, "cond").slice(0, 40),
+        qty: Math.max(1, Math.round(impNum(get(row, "qty")) || 1)), cost: impNum(get(row, "cost")),
+        tag: impNum(get(row, "tag")), custom: impNum(get(row, "custom")), market: impNum(get(row, "market")),
+        pid: (() => { const v = parseInt(get(row, "pid"), 10); return isFinite(v) ? v : null; })(),
+      };
+      if (!r.name && r.pid == null) continue;
+      impRows.push({ raw: r, ...impMatch(r) });
+    }
+    if (!impRows.length) { impMsg("No card rows found under the header.", true); return; }
+    const n = (s) => impRows.filter((x) => x.status === s).length;
+    impMsg(impRows.length + " rows: " + n("ok") + " matched, " + n("check") + " to check, " + n("none") + " with no match" +
+      (rows.length > 2001 ? " (only the first 2,000 rows were read)" : "") + (ignored.length ? ". Ignored columns: " + ignored.join(", ") : "") + ".");
+    $("imp-review").hidden = false; $("imp-paste-wrap").hidden = true;
+    renderImp();
+  }
+  function renderImp() {
+    const list = $("imp-list"); list.replaceChildren();
+    const order = { none: 0, check: 1, ok: 2 };
+    const shown = impRows.map((x, i) => [x, i]).filter(([x]) => impFilter === "all" || x.status === impFilter)
+      .sort((a, b) => order[a[0].status] - order[b[0].status] || a[1] - b[1]);
+    for (const [x] of shown.slice(0, 300)) {
+      const r = x.raw, row = el("div", "imp-row");
+      const top = el("div", "imp-top");
+      top.append(el("span", "raw", [r.name, r.set, r.number, r.variant, r.cond].filter(Boolean).join(" · ") +
+        " · ×" + r.qty + (r.cost != null ? " · cost " + money(r.cost) : "")),
+        el("span", "dm " + (x.status === "ok" ? "high" : x.status === "check" ? "medium" : "low"), x.status === "ok" ? "Matched" : x.status === "check" ? "Check" : "No match"));
+      const sel = el("select", "sel"); sel.setAttribute("aria-label", "Card for " + r.name);
+      x.opts.forEach(([c, v], i) => sel.append(new Option(c.name + " · " + c.set + " · " + c.number + " · " + v.variant + " — " + money(v.price), String(i))));
+      sel.append(new Option("Add as typed (no price data)" + (r.market ? " — market " + money(r.market) : ""), "hand"), new Option("Skip this row", "skip"));
+      sel.value = String(x.pick);
+      sel.onchange = () => { x.pick = sel.value === "hand" || sel.value === "skip" ? sel.value : +sel.value; if (x.status !== "ok") x.status = x.status === "none" && sel.value === "skip" ? "none" : x.status; updateImpBtn(); };
+      row.append(top, sel); list.append(row);
+    }
+    if (shown.length > 300) list.append(el("p", "sub-note", (shown.length - 300) + " more rows not shown; they will be imported as matched."));
+    if (!shown.length) list.append(el("p", "sub-note", "No rows here."));
+    updateImpBtn();
+  }
+  const impCount = () => impRows.filter((x) => x.pick !== "skip" && (x.pick !== "hand" || x.raw.name)).reduce((a, x) => a + x.raw.qty, 0);
+  function updateImpBtn() {
+    const n = impCount();
+    $("imp-go").textContent = "Import " + n.toLocaleString() + (n === 1 ? " card" : " cards");
+    $("imp-go").disabled = !n || !invCol;
+  }
+  $("imp-go").onclick = async () => {
+    if (!invCol) { impMsg("Sign in to Claude to save inventory.", true); return; }
+    // combine identical rows, then merge into matching inventory entries
+    const groups = new Map();
+    for (const x of impRows) {
+      if (x.pick === "skip") continue;
+      const r = x.raw;
+      let it;
+      if (x.pick === "hand") { if (!r.name) continue; it = { name: r.name, set: r.set, number: r.number, variant: r.variant, cardId: null, market: r.market }; }
+      else { const [c, v] = x.opts[x.pick]; it = { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price }; }
+      it.cost = r.cost; it.cond = r.cond || null; it.custom = r.custom > 0 ? r.custom : null;
+      const key = [it.cardId ?? "h:" + norm(it.name + " " + it.set + " " + it.number), it.variant, it.cost, it.cond, it.custom].join("|");
+      const g = groups.get(key);
+      if (g) { g.qty += r.qty; if (g.tag == null && r.tag > 0) g.tag = r.tag; }
+      else groups.set(key, { ...it, qty: r.qty, tag: r.tag > 0 ? r.tag : null });
+    }
+    const todo = [...groups.values()];
+    $("imp-go").disabled = true; $("imp-cancel").disabled = true;
+    let done = 0, merged = 0;
+    try {
+      for (const it of todo) {
+        impMsg("Importing " + (done + 1) + " of " + todo.length + "…");
+        const same = it.cardId != null && !it.custom ? invDocs.find((d) => { const y = d.data(); return y && y.cardId === it.cardId && y.variant === it.variant && (y.cost ?? null) === (it.cost ?? null) && (y.cond ?? null) === (it.cond ?? null) && !(y.custom > 0); }) : null;
+        if (same) { await invCol.doc(same.id).update({ qty: (+same.data().qty || 0) + it.qty }); merged++; }
+        else {
+          const tag = it.tag != null ? it.tag : priceInfo(it).sticker;
+          await invCol.doc().set({ ...it, tag: tag ?? null, addedAt: Date.now() });
+        }
+        done++;
+      }
+      impMsg("Imported " + impCount().toLocaleString() + " cards (" + todo.length + " listings" + (merged ? ", " + merged + " added to cards you already had" : "") + ").");
+      impRows = []; $("imp-review").hidden = true;
+    } catch (e) {
+      impMsg((e?.code === "quota_exceeded" ? "Storage is full. " : "Import stopped. ") + done + " of " + todo.length + " listings were saved; the rest were not.", true);
+    } finally { $("imp-go").disabled = false; $("imp-cancel").disabled = false; updateImpBtn(); }
+  };
+
   // ---------- inventory: list ----------
   let ivFilter = "all", ivOpen = null;
   for (const b of document.querySelectorAll("[data-ivf]")) b.onclick = () => {
@@ -1546,7 +1786,7 @@ a { color: var(--accent); }
       tags.append(demandChip(pi.d));
       if (it.custom > 0) tags.append(el("span", "dm low", "Your price"));
       if (pi.restick) tags.append(el("span", "badge", "Re-sticker " + money(pi.tag) + " → " + money(pi.sticker)));
-      row.append(el("span", "n", String(it.name || "Card")), stk, el("span", "s", [it.set, it.number, it.variant].filter(Boolean).join(" · ") || "Added by hand"), tags);
+      row.append(el("span", "n", String(it.name || "Card")), stk, el("span", "s", [it.set, it.number, it.variant, it.cond].filter(Boolean).join(" · ") || "Added by hand"), tags);
       row.onclick = () => { ivOpen = ivOpen === id ? null : id; renderInv(); };
       wrap.append(row);
       if (ivOpen === id) wrap.append(ivEditor(id, it, pi));
