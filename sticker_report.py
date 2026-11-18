@@ -5,9 +5,8 @@ Uses the same demand score and sticker formula as the scanner page:
   demand score 0-100 = 60% sales activity (days of the last 7 the market price
   moved) + 25% how close the cheapest listing is to market + 15% how close the
   mid listing price is to market.  Score 60+ = high demand -> 105-110% of market,
-  below 60 -> 100-104%.  The market price is first adjusted for condition
-  (Near Mint 100%, Lightly Played 85%, Moderately Played 70%, Heavily Played
-  55%, Damaged 40%).  Rounded to $0.25 under $10, $0.50 under $50, $1 under
+  below 60 -> 100-104%.  The normal market price is used for every condition;
+  the condition is only shown.  Rounded to $0.25 under $10, $0.50 under $50, $1 under
   $500, $5 above.  A card needs a new sticker when the price on its sticker (tag)
   is off by 5% or more (at least $0.50).
 
@@ -38,8 +37,8 @@ def demand(v):
     return {"score": score, "level": level, "mult": mult}
 
 
-CONDS = {"NM": ("Near Mint", 1.0), "LP": ("Lightly Played", 0.85), "MP": ("Moderately Played", 0.7),
-         "HP": ("Heavily Played", 0.55), "DMG": ("Damaged", 0.4)}
+CONDS = {"NM": ("Near Mint", 1.0), "LP": ("Lightly Played", 1.0), "MP": ("Moderately Played", 1.0),
+         "HP": ("Heavily Played", 1.0), "DMG": ("Damaged", 1.0)}
 
 
 def cond_key(text):

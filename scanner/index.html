@@ -500,7 +500,7 @@ a { color: var(--accent); }
           <div class="field"><label class="lbl" for="iv-f-qty">Quantity</label><input id="iv-f-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
           <div class="field"><label class="lbl" for="iv-f-cost">Cost each</label><div class="money"><span>$</span><input id="iv-f-cost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
           <div class="field"><label class="lbl" for="iv-f-cond">Condition</label><select class="sel" id="iv-f-cond"></select></div>
-          <div class="field"><label class="lbl" for="iv-f-mkt">Market (Near Mint)</label><div class="money"><span>$</span><input id="iv-f-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+          <div class="field"><label class="lbl" for="iv-f-mkt">Market</label><div class="money"><span>$</span><input id="iv-f-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
         </div>
         <div class="iv-f-sticker"><span id="iv-f-demand"></span><span>Sticker <b id="iv-f-stk">$0.00</b></span></div>
         <div class="slot-btns"><button class="btn primary" id="iv-f-add" type="button">Add to inventory</button><button class="mini" id="iv-f-cancel" type="button">Cancel</button></div>
@@ -578,13 +578,13 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       <p class="sub-note" id="by-empty">No cards yet. Scan or search above to add cards.</p>
       <div class="stats">
         <div class="stat"><span>You pay</span><b id="by-pay">$0.00</b><small id="by-n">0 cards</small></div>
-        <div class="stat"><span>Market value</span><b id="by-mkt">$0.00</b><small>For their condition</small></div>
+        <div class="stat"><span>Market value</span><b id="by-mkt">$0.00</b><small>TCGplayer market</small></div>
         <div class="stat"><span>Sticker value</span><b id="by-stk">$0.00</b><small>Recommended prices</small></div>
         <div class="stat"><span>Potential profit</span><b id="by-profit">$0.00</b><small>If all sell at sticker</small></div>
       </div>
       <button class="btn primary" id="by-done" type="button" disabled>Done: add to inventory</button>
       <div class="status" id="by-msg" role="status"></div>
-      <p class="foot">Condition prices from the Near Mint market: Lightly Played 85%, Moderately Played 70%, Heavily Played 55%, Damaged 40%. You pay = condition market &times; buy %. Sticker = condition market &times; demand markup (100&ndash;110%).</p>
+      <p class="foot">Prices use the normal TCGplayer market price whatever the condition; the condition is saved with each card. You pay = market &times; buy %. Sticker = market &times; demand markup (100&ndash;110%).</p>
     </section>
   </div>
 
@@ -1467,8 +1467,8 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const c = it.cardId != null ? byId.get(it.cardId) : null;
     return c ? c.vars.find((v) => v.variant === it.variant) || null : null;
   }
-  // Condition discounts from the Near Mint market price (typical TCGplayer spreads).
-  const CONDS = [["NM", "Near Mint", 1], ["LP", "Lightly Played", 0.85], ["MP", "Moderately Played", 0.7], ["HP", "Heavily Played", 0.55], ["DMG", "Damaged", 0.4]];
+  // Condition is recorded and shown; prices use the normal market price for every condition.
+  const CONDS = [["NM", "Near Mint", 1], ["LP", "Lightly Played", 1], ["MP", "Moderately Played", 1], ["HP", "Heavily Played", 1], ["DMG", "Damaged", 1]];
   function condKey(text) {
     const s = norm(text);
     if (!s) return "NM";
@@ -2001,7 +2001,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       const paint = (keepPay) => {
         const { pi, pay } = buyCalc(b);
         mkB.textContent = pi.market ? money(pi.market) : "—";
-        mkS.textContent = b.ck === "NM" ? "Near Mint" : condName(b.ck) + " · NM " + (pi.nm ? money(pi.nm) : "—");
+        mkS.textContent = condName(b.ck);
         if (!keepPay) pyIn.value = pay != null ? pay.toFixed(2) : "";
         skB.textContent = pi.sticker ? money(pi.sticker) : "—";
         skS.replaceChildren(demandChip(pi.d));

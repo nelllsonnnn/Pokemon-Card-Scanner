@@ -10,7 +10,7 @@ card's asking price is a good deal.
 | --- | --- |
 | `tracker.py` | Downloads TCGplayer prices (via tcgcsv.com's daily archives), compares today with 1, 7 and 30 days ago, and writes the data files below. |
 | `dashboard/index.html` | The "Pokémon Price Movers" dashboard page (a Claude Data artifact). Reads `movers.json` and `summary.json`. |
-| `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with demand- and condition-based sticker prices and CSV import, Buying, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
+| `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with demand-based sticker prices, conditions and CSV import, Buying, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
 | `card_images.py` | Fetches official TCGplayer card pictures for recorded transactions; run every 3 hours by a Claude scheduled task. |
 
 Generated files (`dashboard/*.json`, `scanner/prices.json`) are not committed;
@@ -38,8 +38,8 @@ than 2× or under ½ the market price are ignored as outliers).
 
 ## Vending sticker prices
 
-Prices start from the Near Mint market price adjusted for condition
-(Lightly Played 85%, Moderately Played 70%, Heavily Played 55%, Damaged 40%).
+Prices use the normal TCGplayer market price for every condition; the
+condition is recorded and shown on each card.
 Each card gets a demand score (0–100) from how many of the last 7 days its
 market price moved (it only moves when the card sells), how close the cheapest
 listing is to market, and how close the mid listing price is. Score 60+ is high
