@@ -365,7 +365,7 @@ a { color: var(--accent); }
       <p class="foot" id="p-note">Type in any two boxes and the third works itself out (shown in green).</p>
       <button class="btn primary" id="p-save" type="button" disabled>Record transaction</button>
       <div class="status" id="p-msg" role="status"></div>
-      <p class="foot" id="p-hint">&ldquo;Sold for&rdquo; starts at the payout. Not sold yet? Clear &ldquo;Sold for&rdquo; and record it now; mark it sold later in Transactions.</p>
+      <p class="foot" id="p-hint">&ldquo;I paid&rdquo; starts at the payout. Leave &ldquo;Sold for&rdquo; empty until the card sells, then mark it sold in Transactions.</p>
     </section>
   </div>
 
@@ -705,10 +705,9 @@ a { color: var(--accent); }
   });
 
   // ---------- profit ----------
-  // Payout fills one profit box until you type your own value there:
-  // Sold for for a single card, I paid for a lot.
+  // Payout fills I paid until you type your own value there.
   let soldEdited = false, lotMode = false, lot = [];
-  const linkedId = () => (lotMode ? "p-paid" : "p-sold");
+  const linkedId = () => "p-paid";
   function syncPaid() {
     const L = linkedId();
     if (!soldEdited) { $(L).value = $("c-pay").value; recentB = touch(recentB, L); }
@@ -737,7 +736,7 @@ a { color: var(--accent); }
     const d = JSON.parse(localStorage.getItem("lotDraft") || "null");
     if (d && Array.isArray(d.items)) { lot = d.items.slice(0, 100); lotMode = d.mode === true; }
   } catch {}
-  const SINGLE_HINT = "“Sold for” starts at the payout. Not sold yet? Clear “Sold for” and record it now; mark it sold later in Transactions.";
+  const SINGLE_HINT = "“I paid” starts at the payout. Leave “Sold for” empty until the card sells, then mark it sold in Transactions.";
   const LOT_HINT = "“I paid” starts at the lot payout. Leave “Sold for” empty until the lot sells, then mark it sold in Transactions.";
   const saveLot = () => { try { localStorage.setItem("lotDraft", JSON.stringify({ mode: lotMode, items: lot })); } catch {} };
   const lotTotal = () => round2(lot.reduce((a, x) => a + (x.market > 0 ? x.market : 0), 0));
