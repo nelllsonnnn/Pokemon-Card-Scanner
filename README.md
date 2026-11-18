@@ -10,7 +10,7 @@ card's asking price is a good deal.
 | --- | --- |
 | `tracker.py` | Downloads TCGplayer prices (via tcgcsv.com's daily archives), compares today with 1, 7 and 30 days ago, and writes the data files below. |
 | `dashboard/index.html` | The "Pokémon Price Movers" dashboard page (a Claude Data artifact). Reads `movers.json` and `summary.json`. |
-| `scanner/index.html` | The "Pokémon Card Scanner" page: Scan, Calculator and Transactions tabs. Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
+| `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with demand-based sticker prices, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
 | `card_images.py` | Fetches official TCGplayer card pictures for recorded transactions; run every 3 hours by a Claude scheduled task. |
 
 Generated files (`dashboard/*.json`, `scanner/prices.json`) are not committed;
@@ -35,6 +35,15 @@ A card is flagged when its market price moves at least 15% in a day or 25% in a
 week, by at least $1.50, and it's worth at least $3. To filter out one-off odd
 sales, the cheapest current listing must have moved the same way (listings more
 than 2× or under ½ the market price are ignored as outliers).
+
+## Vending sticker prices
+
+Each card gets a demand score (0–100) from how many of the last 7 days its
+market price moved (it only moves when the card sells), how close the cheapest
+listing is to market, and how close the mid listing price is. Score 60+ is high
+demand: sticker 105–110% of market. Below 60: 100–104%. Stickers are rounded
+($0.25 under $10, $0.50 under $50, $1 under $500, $5 above) and flagged for
+re-stickering when the price moves 5% or more.
 
 ## How the scanner judges value
 

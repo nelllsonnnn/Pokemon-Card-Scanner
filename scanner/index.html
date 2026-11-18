@@ -185,6 +185,58 @@ main { display: block; }
 .d-lot-row b { display: block; font-weight: 600; overflow-wrap: anywhere; }
 .d-lot-row small { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
 .d-lot-row span { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.top { display: flex; align-items: center; gap: 12px; }
+.top-txt { min-width: 0; }
+.menu-btn { appearance: none; flex: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.menu-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.menu-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.mode-tag { display: inline-block; vertical-align: middle; margin-left: 6px; font: 700 .65rem var(--font-body); letter-spacing: .07em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 8px; }
+.scrim { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .42); }
+.drawer { position: fixed; top: 0; bottom: 0; left: 0; z-index: 61; width: min(280px, 82vw); background: var(--surface); border-right: 1px solid var(--line); box-shadow: 4px 0 24px rgba(0, 0, 0, .18); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.drawer-head b { font: 700 1.05rem var(--font-display); }
+.dr-main { display: block; margin-top: 10px; padding: 12px 12px; border-radius: 10px; border-left: 3px solid transparent; font: 700 1.1rem var(--font-display); color: var(--fg); text-decoration: none; }
+.dr-main[aria-current="true"] { background: var(--bg); border-left-color: var(--accent); color: var(--accent); }
+.dr-sub { display: block; padding: 9px 12px 9px 26px; border-radius: 8px; color: var(--accent); text-decoration: none; font-size: .95rem; }
+.dr-sub[aria-current="page"] { color: var(--fg); font-weight: 700; background: var(--bg); }
+.dr-main:focus-visible, .dr-sub:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+@media (prefers-reduced-motion: no-preference) { .drawer:not([hidden]) { animation: drawer-in .18s ease-out; } @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } } }
+.calc.two { grid-template-columns: 1fr 1fr; }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg-b[data-pay][aria-pressed="true"] { color: var(--fg); }
+.sel { width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background-color: var(--bg); color: var(--fg); font: 400 1rem var(--font-body); padding: 0 12px; }
+input[type="date"] { width: 100%; font: 400 1rem var(--font-body); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-height: 48px; }
+.iv-form { display: grid; gap: 10px; background: var(--bg); border-radius: 12px; padding: 12px; }
+.iv-f-card b { display: block; font: 700 1.05rem var(--font-display); }
+.iv-f-card small { color: var(--muted); font-size: .85rem; }
+.iv-f-sticker { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.iv-f-sticker b { font: 700 1.3rem var(--font-display); font-variant-numeric: tabular-nums; }
+.iv-list, .sh-list { display: grid; gap: 6px; }
+.iv { background: var(--bg); border-radius: 10px; min-width: 0; }
+.iv-row { appearance: none; width: 100%; text-align: left; font: inherit; color: var(--fg); background: none; border: 0; border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; cursor: pointer; }
+.iv-row:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.iv-row .n { font-weight: 600; overflow-wrap: anywhere; }
+.iv-row .s { grid-column: 1; color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.iv-row .stk { grid-column: 2; grid-row: 1 / span 3; text-align: right; font: 700 1.15rem var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.iv-row .stk small { display: block; font: 400 .75rem var(--font-body); color: var(--muted); }
+.iv-tags { grid-column: 1; display: flex; gap: 6px; flex-wrap: wrap; }
+.iv-edit { padding: 0 12px 12px; display: grid; gap: 10px; }
+.dm { font: 700 .68rem var(--font-body); letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+.dm.high { background: var(--good-bg); color: var(--good); }
+.dm.medium { background: var(--warn-bg); color: var(--warn); }
+.dm.low { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.co-row { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem auto; gap: 8px; align-items: center; background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.co-row .lr-main { display: grid; gap: 2px; min-width: 0; }
+.co-row .lr-main b { font-weight: 600; overflow-wrap: anywhere; }
+.co-row .lr-main small { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.co-row .money input { min-height: 38px; padding: 6px 8px 6px 24px; border-radius: 8px; background: var(--surface); }
+.co-row .money span { left: 10px; }
+.qty { display: flex; align-items: center; gap: 4px; }
+.qty span { min-width: 1.6rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 380px) { .co-row { grid-template-columns: minmax(0, 1fr) auto; } .co-row .qty { grid-column: 2; grid-row: 1; } .co-row .money { grid-column: 1 / -1; } }
+.sale { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.iv-edit .sale { background: var(--surface); border: 1px solid var(--line); }
+.sale-items { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -199,9 +251,14 @@ a { color: var(--accent); }
 </style>
 
 <div class="wrap">
-  <header>
-    <h1>Pokémon Card Scanner</h1>
-    <p class="sub" id="asof">Loading TCGplayer prices…</p>
+  <header class="top">
+    <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="top-txt">
+      <h1>Pokémon Card Scanner <span class="mode-tag" id="mode-tag">Flipping</span></h1>
+      <p class="sub" id="asof">Loading TCGplayer prices…</p>
+    </div>
   </header>
 
   <main>
@@ -382,6 +439,112 @@ a { color: var(--accent); }
       <div class="txs" id="tx-list"></div>
     </section>
   </div>
+  <div class="view" data-view="inventory" hidden>
+    <section class="panel" aria-labelledby="iv-h">
+      <label class="lbl" id="iv-h">Inventory</label>
+      <div class="stats">
+        <div class="stat"><span>Cards</span><b id="iv-count">0</b><small id="iv-lines">0 listings</small></div>
+        <div class="stat"><span>Sticker value</span><b id="iv-value">$0.00</b><small>At today&rsquo;s sticker prices</small></div>
+        <div class="stat"><span>Cost</span><b id="iv-cost">$0.00</b><small>What you paid</small></div>
+        <div class="stat"><span>Market value</span><b id="iv-market">$0.00</b><small id="iv-restick">0 stickers to update</small></div>
+      </div>
+      <p class="foot" id="iv-state">Loading your inventory&hellip;</p>
+    </section>
+
+    <section class="panel" aria-labelledby="iv-add-h">
+      <label class="lbl" id="iv-add-h">Add cards</label>
+      <div class="row">
+        <button class="btn primary" id="iv-take" type="button" disabled>
+          <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo
+        </button>
+        <button class="btn" id="iv-pick" type="button" disabled>
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg>Choose photo
+        </button>
+      </div>
+      <input class="file" id="iv-cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+      <input class="file" id="iv-lib" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+      <div class="status" id="iv-status" role="status"></div>
+      <input id="iv-q" type="search" placeholder="Or search name or number" autocomplete="off" enterkeyhint="search" aria-label="Search cards to add">
+      <div class="cands" id="iv-res"></div>
+      <button class="mini" id="iv-manual" type="button">Add a card by hand</button>
+      <div class="iv-form" id="iv-form" hidden>
+        <div class="iv-f-card" id="iv-f-card"><b id="iv-f-name"></b><small id="iv-f-meta"></small></div>
+        <div class="field" id="iv-f-name-wrap" hidden><label class="lbl" for="iv-f-name-in">Card name</label><input id="iv-f-name-in" type="text" maxlength="120" placeholder="e.g. Charizard ex 199/165"></div>
+        <div class="vars" id="iv-f-vars" role="group" aria-label="Version"></div>
+        <div class="calc">
+          <div class="field"><label class="lbl" for="iv-f-qty">Quantity</label><input id="iv-f-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+          <div class="field"><label class="lbl" for="iv-f-cost">Cost each</label><div class="money"><span>$</span><input id="iv-f-cost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+          <div class="field"><label class="lbl" for="iv-f-mkt">Market</label><div class="money"><span>$</span><input id="iv-f-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+        </div>
+        <div class="iv-f-sticker"><span id="iv-f-demand"></span><span>Sticker <b id="iv-f-stk">$0.00</b></span></div>
+        <div class="slot-btns"><button class="btn primary" id="iv-f-add" type="button">Add to inventory</button><button class="mini" id="iv-f-cancel" type="button">Cancel</button></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="iv-list-h">
+      <label class="lbl" id="iv-list-h">Your cards</label>
+      <input id="iv-filter" type="search" placeholder="Find in inventory" autocomplete="off" aria-label="Find in inventory">
+      <div class="chips" role="group" aria-label="Show">
+        <button class="var" type="button" data-ivf="all" aria-pressed="true">All</button>
+        <button class="var" type="button" data-ivf="restick" aria-pressed="false">Needs new sticker</button>
+        <button class="var" type="button" data-ivf="high" aria-pressed="false">High demand</button>
+      </div>
+      <div class="iv-list" id="iv-list"></div>
+      <p class="foot">Sticker price follows demand: high-demand cards get 105&ndash;110% of market, others 100&ndash;104%. Demand comes from how many days this week the card&rsquo;s market price moved (it only moves when the card sells) and how close listings are to market. Prices update daily; a card is flagged when its sticker is 5% or more off.</p>
+    </section>
+  </div>
+
+  <div class="view" data-view="checkout" hidden>
+    <section class="panel" aria-labelledby="co-h">
+      <label class="lbl" id="co-h">Checkout</label>
+      <div class="field"><label class="lbl" for="co-show">Show</label><select class="sel" id="co-show"></select></div>
+      <input id="co-q" type="search" placeholder="Find a card in your inventory" autocomplete="off" aria-label="Find a card in your inventory">
+      <div class="cands" id="co-res"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="cart-h">
+      <label class="lbl" id="cart-h">Cart</label>
+      <div class="lot-list" id="co-cart"></div>
+      <p class="sub-note" id="co-empty">Cart is empty. Find cards above to add them.</p>
+      <div class="lot-tot"><span>Sticker total</span><b id="co-sub">$0.00</b></div>
+      <div class="calc two">
+        <div class="field"><label class="lbl" for="co-disc">Discount %</label><div class="money pct"><input id="co-disc" type="number" inputmode="decimal" min="0" max="100" step="1" placeholder="0"><span>%</span></div></div>
+        <div class="field"><label class="lbl" for="co-total">Total</label><div class="money good"><span>$</span><input id="co-total" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+      </div>
+      <div class="seg three" role="group" aria-label="Payment">
+        <button class="seg-b" type="button" data-pay="cash" aria-pressed="true">Cash</button>
+        <button class="seg-b" type="button" data-pay="card" aria-pressed="false">Card</button>
+        <button class="seg-b" type="button" data-pay="trade" aria-pressed="false">Trade</button>
+      </div>
+      <button class="btn primary" id="co-done" type="button" disabled>Complete sale</button>
+      <div class="status" id="co-msg" role="status"></div>
+      <p class="foot">Type a discount or a final total; the other one follows. Sold cards come out of your inventory.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="rs-h">
+      <label class="lbl" id="rs-h">Recent sales</label>
+      <div class="txs" id="co-sales"></div>
+    </section>
+  </div>
+
+  <div class="view" data-view="shows" hidden>
+    <section class="panel" aria-labelledby="sh-new-h">
+      <label class="lbl" id="sh-new-h">New show</label>
+      <div class="field"><label class="lbl" for="sh-name">Name</label><input id="sh-name" type="text" maxlength="80" placeholder="e.g. Seattle Card Show"></div>
+      <div class="calc two">
+        <div class="field"><label class="lbl" for="sh-date">Date</label><input id="sh-date" type="date"></div>
+        <div class="field"><label class="lbl" for="sh-fee">Table fee</label><div class="money"><span>$</span><input id="sh-fee" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+      </div>
+      <button class="btn primary" id="sh-add" type="button" disabled>Add show</button>
+      <div class="status" id="sh-msg" role="status"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="sh-h">
+      <label class="lbl" id="sh-h">Shows</label>
+      <div class="sh-list" id="sh-list"></div>
+      <p class="foot">Profit = sales &minus; what you paid for the cards sold &minus; table fee. Trades count at their agreed value.</p>
+    </section>
+  </div>
   </main>
 </div>
 
@@ -403,18 +566,41 @@ a { color: var(--accent); }
   <button class="mini" id="lb-close" type="button">Close</button>
 </div>
 
-<nav class="tabs" role="tablist" aria-label="Pages">
-  <button class="tab" role="tab" type="button" data-go="scan" aria-selected="true">
+<div class="scrim" id="scrim" hidden></div>
+<nav class="drawer" id="drawer" aria-label="Menu" hidden>
+  <div class="drawer-head"><b>Menu</b><button class="mini" id="drawer-close" type="button">Close</button></div>
+  <a class="dr-main" href="#scan" data-mode-link="flipping">Flipping</a>
+  <a class="dr-sub" href="#scan" data-link="scan">Scan</a>
+  <a class="dr-sub" href="#movers" data-link="movers">Movers</a>
+  <a class="dr-sub" href="#calculator" data-link="calculator">Calculator</a>
+  <a class="dr-sub" href="#transactions" data-link="transactions">Transactions</a>
+  <a class="dr-main" href="#inventory" data-mode-link="vending">Vending</a>
+  <a class="dr-sub" href="#inventory" data-link="inventory">Inventory</a>
+  <a class="dr-sub" href="#checkout" data-link="checkout">Checkout</a>
+  <a class="dr-sub" href="#shows" data-link="shows">Shows</a>
+</nav>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Pages">
+  <button class="tab" role="tab" type="button" data-mode="flipping" data-go="scan" aria-selected="true">
     <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="7" width="8" height="10" rx="1"/></svg>Scan
   </button>
-  <button class="tab" role="tab" type="button" data-go="movers" aria-selected="false">
+  <button class="tab" role="tab" type="button" data-mode="flipping" data-go="movers" aria-selected="false">
     <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Movers
   </button>
-  <button class="tab" role="tab" type="button" data-go="calculator" aria-selected="false">
+  <button class="tab" role="tab" type="button" data-mode="flipping" data-go="calculator" aria-selected="false">
     <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2"/></svg>Calculator
   </button>
-  <button class="tab" role="tab" type="button" data-go="transactions" aria-selected="false">
+  <button class="tab" role="tab" type="button" data-mode="flipping" data-go="transactions" aria-selected="false">
     <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Transactions
+  </button>
+  <button class="tab" role="tab" type="button" data-mode="vending" data-go="inventory" aria-selected="false" hidden>
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1"/><rect x="14" y="4" width="7" height="9" rx="1"/><path d="M3 17h18M3 20h18"/></svg>Inventory
+  </button>
+  <button class="tab" role="tab" type="button" data-mode="vending" data-go="checkout" aria-selected="false" hidden>
+    <svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11.2L21 7H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Checkout
+  </button>
+  <button class="tab" role="tab" type="button" data-mode="vending" data-go="shows" aria-selected="false" hidden>
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Shows
   </button>
 </nav>
 
@@ -446,13 +632,14 @@ a { color: var(--accent); }
         c.hay = norm(c.name + " " + c.set + " " + c.number);
         byId.set(c.id, c); cards.push(c);
       }
-      c.vars.push({ variant: r[C.variant], price: r[C.price], low: r[C.low], p1: r[C.p1], p7: r[C.p7], p30: r[C.p30] });
+      c.vars.push({ variant: r[C.variant], price: r[C.price], low: r[C.low], p1: r[C.p1], p7: r[C.p7], p30: r[C.p30], mid: C.mid != null ? r[C.mid] : null, chg7: C.chg7 != null ? r[C.chg7] : null });
     }
     for (const c of cards) c.vars.sort((a, b) => b.price - a.price);
     $("asof").textContent = `${cards.length.toLocaleString()} cards · TCGplayer prices as of ${new Date(d.asof + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     refreshPhotoButtons();
     if ($("q").value) search();
     buildMovers();
+    renderInv(); renderCart();
   }).catch(() => {
     $("asof").textContent = "Couldn't load prices. Reload the page to try again.";
   });
@@ -468,7 +655,7 @@ a { color: var(--accent); }
   function refreshPhotoButtons() {
     $("ai").hidden = !sample;
     const on = !!(sample && imgOK && data);
-    $("take").disabled = $("pick").disabled = !on;
+    $("take").disabled = $("pick").disabled = $("iv-take").disabled = $("iv-pick").disabled = !on;
     if (sample !== null && !imgOK && data && !$("status").textContent)
       setStatus("Photo scanning isn't available here. Search by name instead.");
   }
@@ -480,6 +667,14 @@ a { color: var(--accent); }
   function setStatus(t, err) { $("status").className = "status" + (err ? " err" : ""); $("status").textContent = t; }
 
   let busy = false;
+  const CARD_PROMPT =
+        "The image is a photo of a trading card someone wants to price. Identify it.\n" +
+        "Reply with only this JSON object:\n" +
+        '{"is_pokemon_card": true, "name": "card name exactly as printed, e.g. Charizard ex", ' +
+        '"number": "collector number as printed in a bottom corner, e.g. 199/165, 025/198, SWSH050 or SV-P 085; null if unreadable", ' +
+        '"set": "your best guess at the English set name, e.g. Scarlet & Violet 151; null if unsure", ' +
+        '"finish": "Holofoil, Reverse Holofoil, Normal, or null if unclear", ' +
+        '"first_edition": false, "language": "English", "note": "under 15 words on anything that affects value, e.g. visible damage"}';
   async function scan(file) {
     if (busy) return;
     busy = true;
@@ -491,15 +686,7 @@ a { color: var(--accent); }
     setStatus("");
     const st = $("status"); st.replaceChildren(); const sp = document.createElement("span"); sp.className = "spin"; st.append(sp, " Identifying card (usually 5–20 seconds)");
     try {
-      const g = await sample.json(
-        "The image is a photo of a trading card someone wants to price. Identify it.\n" +
-        "Reply with only this JSON object:\n" +
-        '{"is_pokemon_card": true, "name": "card name exactly as printed, e.g. Charizard ex", ' +
-        '"number": "collector number as printed in a bottom corner, e.g. 199/165, 025/198, SWSH050 or SV-P 085; null if unreadable", ' +
-        '"set": "your best guess at the English set name, e.g. Scarlet & Violet 151; null if unsure", ' +
-        '"finish": "Holofoil, Reverse Holofoil, Normal, or null if unclear", ' +
-        '"first_edition": false, "language": "English", "note": "under 15 words on anything that affects value, e.g. visible damage"}',
-        { images: file });
+      const g = await sample.json(CARD_PROMPT, { images: file });
       onGuess(g || {});
     } catch (e) {
       $("shot-text").textContent = "";
@@ -664,13 +851,31 @@ a { color: var(--accent); }
   };
 
   // ---------- pages ----------
-  const VIEWS = ["scan", "movers", "calculator", "transactions"];
+  const FLIP = ["scan", "movers", "calculator", "transactions"], VEND = ["inventory", "checkout", "shows"];
+  const VIEWS = [...FLIP, ...VEND];
   function go(v) {
-    if (!VIEWS.includes(v)) v = "scan";
+    if (!VIEWS.includes(v)) { let m = "flipping"; try { m = localStorage.getItem("appMode") || m; } catch {} v = m === "vending" ? "inventory" : "scan"; }
+    const mode = VEND.includes(v) ? "vending" : "flipping";
+    try { localStorage.setItem("appMode", mode); } catch {}
     for (const el of document.querySelectorAll("[data-view]")) el.hidden = el.dataset.view !== v;
-    for (const t of document.querySelectorAll(".tab")) t.setAttribute("aria-selected", String(t.dataset.go === v));
+    for (const t of document.querySelectorAll(".tab")) { t.hidden = t.dataset.mode !== mode; t.setAttribute("aria-selected", String(t.dataset.go === v)); }
+    $("tabs").style.gridTemplateColumns = "repeat(" + (mode === "vending" ? 3 : 4) + ", 1fr)";
+    $("mode-tag").textContent = mode === "vending" ? "Vending" : "Flipping";
+    for (const a of document.querySelectorAll("[data-mode-link]")) a.setAttribute("aria-current", String(a.dataset.modeLink === mode));
+    for (const a of document.querySelectorAll("[data-link]")) { if (a.dataset.link === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
+    closeDrawer();
     window.scrollTo(0, 0);
   }
+  function openDrawer() { $("drawer").hidden = false; $("scrim").hidden = false; $("menu-btn").setAttribute("aria-expanded", "true"); $("drawer-close").focus(); }
+  function closeDrawer() {
+    if ($("drawer").hidden) return;
+    $("drawer").hidden = true; $("scrim").hidden = true; $("menu-btn").setAttribute("aria-expanded", "false");
+  }
+  $("menu-btn").onclick = openDrawer;
+  $("drawer-close").onclick = () => { closeDrawer(); $("menu-btn").focus(); };
+  $("scrim").onclick = closeDrawer;
+  for (const a of document.querySelectorAll("#drawer a")) a.addEventListener("click", () => { if (location.hash === a.getAttribute("href")) go(location.hash.slice(1)); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("drawer").hidden) { closeDrawer(); $("menu-btn").focus(); } });
   for (const t of document.querySelectorAll(".tab")) t.onclick = () => { if (location.hash === "#" + t.dataset.go) go(t.dataset.go); else location.hash = t.dataset.go; };
   window.addEventListener("hashchange", () => go(location.hash.slice(1)));
   go(location.hash.slice(1));
@@ -845,6 +1050,7 @@ a { color: var(--accent); }
     txCol = null;
     $("p-save").disabled = true;
     $("tx-state").textContent = "Sign in to Claude to record and see your transactions.";
+    vendUnavailable();
   }
   (async () => {
     try {
@@ -854,6 +1060,7 @@ a { color: var(--accent); }
       txCol = db.doc("data/users/" + uid + "/flips").collection("tx");
       photosCol = db.doc("data/users/" + uid + "/flips").collection("photos");
       txCol.orderBy("at", "desc").onSnapshot((s) => renderTx(s.docs), () => txUnavailable());
+      vendInit(db, uid);
       $("p-save").disabled = false;
     } catch { txUnavailable(); }
   })();
@@ -1139,6 +1346,465 @@ a { color: var(--accent); }
       } catch { del.disabled = false; del.textContent = "Delete"; armed = null; }
     };
     act.append(del);
+  }
+
+  // ======================= VENDING =======================
+  let invCol = null, salesCol = null, showsCol = null;
+  let invDocs = [], saleDocs = [], showDocs = [];
+  const invMap = () => new Map(invDocs.map((d) => [d.id, d.data() || {}]));
+
+  // ---------- demand + sticker price ----------
+  function demandOf(v) {
+    if (!v || !(v.price > 0) || v.chg7 == null) return null;
+    const act = v.chg7 / 7;
+    const sp = v.low > 0 ? Math.max(0, 1 - Math.abs(v.price - v.low) / v.price / 0.3) : 0;
+    const mc = v.mid > 0 ? Math.max(0, 1 - Math.abs(v.mid - v.price) / v.price / 0.5) : 0;
+    const score = Math.round(100 * (0.6 * act + 0.25 * sp + 0.15 * mc));
+    const level = score >= 60 ? "high" : score >= 30 ? "medium" : "low";
+    const mult = score >= 60 ? Math.min(1.10, 1.05 + 0.05 * (score - 60) / 40) : 1 + 0.04 * score / 59;
+    return { score, level, mult };
+  }
+  const niceRound = (x) => { const step = x < 10 ? 0.25 : x < 50 ? 0.5 : x < 500 ? 1 : 5; return Math.round(x / step) * step; };
+  function liveVar(it) {
+    const c = it.cardId != null ? byId.get(it.cardId) : null;
+    return c ? c.vars.find((v) => v.variant === it.variant) || null : null;
+  }
+  function priceInfo(it) {
+    const v = liveVar(it), d = demandOf(v), market = v?.price ?? (it.market > 0 ? +it.market : null);
+    const auto = market > 0 ? niceRound(market * (d ? d.mult : 1.02)) : null;
+    const sticker = it.custom > 0 ? +it.custom : auto;
+    const tag = it.tag > 0 ? +it.tag : null;
+    const restick = tag != null && sticker != null && Math.abs(sticker - tag) >= Math.max(0.5, tag * 0.05);
+    return { v, d, market, sticker, auto, tag, restick };
+  }
+  function demandChip(d) {
+    const s = document.createElement("span");
+    s.className = "dm " + (d ? d.level : "low");
+    s.textContent = d ? (d.level === "high" ? "High demand" : d.level === "medium" ? "Medium demand" : "Low demand") : "Demand unknown";
+    if (d) s.title = "Demand score " + d.score + " of 100";
+    return s;
+  }
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  function vendUnavailable() {
+    invCol = salesCol = showsCol = null;
+    $("iv-state").hidden = false;
+    $("iv-state").textContent = "Sign in to Claude to use Vending; your inventory and sales are saved to your account.";
+    $("co-done").disabled = true; $("sh-add").disabled = true;
+  }
+  function vendInit(db, uid) {
+    const root = db.doc("data/users/" + uid + "/vend");
+    invCol = root.collection("inv"); salesCol = root.collection("sales"); showsCol = root.collection("shows");
+    invCol.onSnapshot((s) => { invDocs = s.docs; renderInv(); renderCoRes(); renderCart(); }, vendUnavailable);
+    salesCol.orderBy("at", "desc").onSnapshot((s) => { saleDocs = s.docs; renderSales(); renderShows(); }, vendUnavailable);
+    showsCol.orderBy("date", "desc").onSnapshot((s) => { showDocs = s.docs; renderShowSelect(); renderShows(); }, vendUnavailable);
+    $("sh-add").disabled = false;
+    updateCoTotals();
+  }
+
+  // ---------- inventory: add ----------
+  let ivPending = null; // { c, vi } or { manual: true }
+  function ivCands(list) {
+    const box = $("iv-res"); box.replaceChildren();
+    for (const [c, v] of list.slice(0, 12)) {
+      const b = el("button", "cand"); b.type = "button";
+      b.append(el("span", "n", c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant));
+      b.onclick = () => ivOpenForm(c, c.vars.indexOf(v));
+      box.append(b);
+    }
+  }
+  let ivT;
+  $("iv-q").addEventListener("input", () => { clearTimeout(ivT); ivT = setTimeout(() => {
+    const qs = tokens($("iv-q").value); if (!qs.length || !data) { $("iv-res").replaceChildren(); return; }
+    const hits = [];
+    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
+    const rows = []; for (const c of hits) { for (const v of c.vars) rows.push([c, v]); if (rows.length >= 12) break; }
+    ivCands(rows);
+    if (!rows.length) $("iv-res").append(el("p", "sub-note", "No cards match that search."));
+  }, 150); });
+  $("iv-manual").onclick = () => ivOpenForm(null, 0);
+  function ivOpenForm(c, vi) {
+    ivPending = c ? { c, vi } : { manual: true };
+    $("iv-form").hidden = false;
+    $("iv-f-card").hidden = !c; $("iv-f-name-wrap").hidden = !!c;
+    $("iv-f-mkt").parentElement.parentElement.hidden = !!c;
+    $("iv-f-qty").value = "1"; $("iv-f-cost").value = ""; $("iv-f-mkt").value = ""; $("iv-f-name-in").value = "";
+    const vb = $("iv-f-vars"); vb.replaceChildren(); vb.hidden = !c || c.vars.length < 2;
+    if (c) {
+      $("iv-f-name").textContent = c.name;
+      $("iv-f-meta").textContent = [c.set, c.number, c.rarity].filter(Boolean).join(" · ");
+      c.vars.forEach((v, i) => {
+        const b = el("button", "var", v.variant + " · " + money(v.price)); b.type = "button";
+        b.setAttribute("aria-pressed", String(i === vi));
+        b.onclick = () => { ivPending.vi = i; for (const x of vb.children) x.setAttribute("aria-pressed", String(x === b)); ivPreview(); };
+        vb.append(b);
+      });
+    }
+    ivPreview();
+    $("iv-form").scrollIntoView({ block: "nearest" });
+    (c ? $("iv-f-cost") : $("iv-f-name-in")).focus();
+  }
+  function ivDraft() {
+    if (!ivPending) return null;
+    if (ivPending.manual) {
+      const m = parseFloat($("iv-f-mkt").value);
+      return { name: $("iv-f-name-in").value.trim().slice(0, 120), set: "", number: "", variant: "", cardId: null, market: m > 0 ? m : null };
+    }
+    const c = ivPending.c, v = c.vars[ivPending.vi];
+    return { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price };
+  }
+  function ivPreview() {
+    const it = ivDraft(); if (!it) return;
+    const pi = priceInfo(it);
+    $("iv-f-demand").replaceChildren(demandChip(pi.d));
+    $("iv-f-stk").textContent = pi.sticker ? money(pi.sticker) : "—";
+  }
+  $("iv-f-mkt").addEventListener("input", ivPreview);
+  $("iv-f-cancel").onclick = () => { ivPending = null; $("iv-form").hidden = true; };
+  $("iv-f-add").onclick = async () => {
+    if (!invCol) { $("iv-status").textContent = "Sign in to Claude to save inventory."; return; }
+    const it = ivDraft(); if (!it) return;
+    if (!it.name) { $("iv-f-name-in").focus(); return; }
+    const qty = Math.max(1, Math.round(parseFloat($("iv-f-qty").value) || 1));
+    const costRaw = parseFloat($("iv-f-cost").value), cost = costRaw >= 0 ? costRaw : null;
+    const pi = priceInfo(it);
+    $("iv-f-add").disabled = true;
+    try {
+      const same = it.cardId != null ? invDocs.find((d) => { const x = d.data(); return x && x.cardId === it.cardId && x.variant === it.variant && (x.cost ?? null) === cost && !(x.custom > 0); }) : null;
+      if (same) await invCol.doc(same.id).update({ qty: (+same.data().qty || 0) + qty });
+      else await invCol.doc().set({ ...it, qty, cost, tag: pi.sticker, custom: null, addedAt: Date.now() });
+      $("iv-status").className = "status"; $("iv-status").textContent = "Added " + qty + " × " + it.name + " at " + (pi.sticker ? money(pi.sticker) : "no price") + ".";
+      ivPending = null; $("iv-form").hidden = true; $("iv-q").value = ""; $("iv-res").replaceChildren();
+    } catch (e) {
+      $("iv-status").className = "status err";
+      $("iv-status").textContent = e?.code === "quota_exceeded" ? "Storage is full. Remove some cards first." : "Couldn't save that. Try again.";
+    } finally { $("iv-f-add").disabled = false; }
+  };
+  // add by photo
+  $("iv-take").onclick = () => $("iv-cam").click();
+  $("iv-pick").onclick = () => $("iv-lib").click();
+  $("iv-cam").onchange = $("iv-lib").onchange = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = ""; if (!f || !sample) return;
+    const st = $("iv-status"); st.className = "status"; st.replaceChildren(el("span", "spin"), " Identifying card (usually 5–20 seconds)");
+    $("iv-take").disabled = $("iv-pick").disabled = true;
+    try {
+      const g = await sample.json(CARD_PROMPT, { images: f });
+      if (g?.is_pokemon_card === false) { st.textContent = "That doesn't look like a Pokémon card."; return; }
+      const ranked = rank(g || {});
+      if (!ranked.length) { st.className = "status err"; st.textContent = "No match found. Try searching by name."; return; }
+      st.textContent = "Read as " + [g.name, g.number].filter(Boolean).join(" ") + ". Pick the right one:";
+      const rows = []; for (const c of ranked.slice(0, 4)) for (const v of c.vars) rows.push([c, v]);
+      ivCands(rows);
+      const top = ranked[0]; let vi = 0;
+      const want = g.first_edition ? "1st edition" : norm(g.finish);
+      if (want) { const i = top.vars.findIndex((v) => norm(v.variant) === want); if (i >= 0) vi = i; }
+      ivOpenForm(top, vi);
+    } catch (e2) {
+      st.className = "status err";
+      st.textContent = e2?.code === "not_granted" ? "Card recognition needs your permission to use Claude. Search by name instead." : "Couldn't read the card. Try a closer photo, or search by name.";
+    } finally { refreshPhotoButtons(); }
+  };
+
+  // ---------- inventory: list ----------
+  let ivFilter = "all", ivOpen = null;
+  for (const b of document.querySelectorAll("[data-ivf]")) b.onclick = () => {
+    ivFilter = b.dataset.ivf;
+    for (const x of document.querySelectorAll("[data-ivf]")) x.setAttribute("aria-pressed", String(x === b));
+    renderInv();
+  };
+  $("iv-filter").addEventListener("input", () => renderInv());
+  function renderInv() {
+    let n = 0, value = 0, cost = 0, mkt = 0, restick = 0;
+    const items = [];
+    for (const d of invDocs) {
+      const it = d.data(); if (!it) continue;
+      const q = +it.qty || 0, pi = priceInfo(it);
+      n += q; value += (pi.sticker || 0) * q; cost += (+it.cost || 0) * q; mkt += (pi.market || 0) * q;
+      if (pi.restick) restick++;
+      items.push({ id: d.id, it, pi });
+    }
+    $("iv-count").textContent = n.toLocaleString();
+    $("iv-lines").textContent = items.length + (items.length === 1 ? " listing" : " listings");
+    $("iv-value").textContent = money(value); $("iv-cost").textContent = money(cost); $("iv-market").textContent = money(mkt);
+    $("iv-restick").textContent = restick + (restick === 1 ? " sticker to update" : " stickers to update");
+    $("iv-state").hidden = items.length > 0;
+    $("iv-state").textContent = "No cards yet. Add your first card above.";
+    const qs = tokens($("iv-filter").value);
+    const shown = items.filter(({ it, pi }) =>
+      (ivFilter !== "restick" || pi.restick) && (ivFilter !== "high" || pi.d?.level === "high") &&
+      (!qs.length || qs.every((t) => norm([it.name, it.set, it.number, it.variant].join(" ")).includes(t))))
+      .sort((a, b) => (b.pi.sticker || 0) - (a.pi.sticker || 0));
+    const list = $("iv-list"); list.replaceChildren();
+    if (items.length && !shown.length) list.append(el("p", "sub-note", "No cards match."));
+    for (const { id, it, pi } of shown) {
+      const wrap = el("div", "iv");
+      const row = el("button", "iv-row"); row.type = "button"; row.setAttribute("aria-expanded", String(ivOpen === id));
+      const stk = el("span", "stk", pi.sticker ? money(pi.sticker) : "—");
+      stk.append(el("small", null, "Mkt " + (pi.market ? money(pi.market) : "—") + " · ×" + (+it.qty || 0)));
+      const tags = el("span", "iv-tags");
+      tags.append(demandChip(pi.d));
+      if (it.custom > 0) tags.append(el("span", "dm low", "Your price"));
+      if (pi.restick) tags.append(el("span", "badge", "Re-sticker " + money(pi.tag) + " → " + money(pi.sticker)));
+      row.append(el("span", "n", String(it.name || "Card")), stk, el("span", "s", [it.set, it.number, it.variant].filter(Boolean).join(" · ") || "Added by hand"), tags);
+      row.onclick = () => { ivOpen = ivOpen === id ? null : id; renderInv(); };
+      wrap.append(row);
+      if (ivOpen === id) wrap.append(ivEditor(id, it, pi));
+      list.append(wrap);
+    }
+  }
+  function ivEditor(id, it, pi) {
+    const box = el("div", "iv-edit");
+    const grid = el("div", "calc");
+    const field = (label, input, money_) => {
+      const f = el("div", "field"); const l = el("label", "lbl", label); const iid = "ive-" + label.replace(/\W/g, "") ; input.id = iid; l.htmlFor = iid;
+      if (money_) { const w = el("div", "money"); w.append(el("span", null, "$"), input); f.append(l, w); } else f.append(l, input);
+      grid.append(f);
+    };
+    const qty = el("input"); qty.type = "number"; qty.inputMode = "numeric"; qty.min = "0"; qty.step = "1"; qty.value = String(+it.qty || 0);
+    const cost = el("input"); cost.type = "number"; cost.inputMode = "decimal"; cost.min = "0"; cost.step = "0.01"; cost.placeholder = "0.00"; if (it.cost != null) cost.value = (+it.cost).toFixed(2);
+    const own = el("input"); own.type = "number"; own.inputMode = "decimal"; own.min = "0"; own.step = "0.01"; own.placeholder = pi.auto ? pi.auto.toFixed(2) : "0.00"; if (it.custom > 0) own.value = (+it.custom).toFixed(2);
+    field("Quantity", qty); field("Cost each", cost, true); field("Your price", own, true);
+    box.append(grid, el("p", "foot", "Leave “Your price” empty to use the demand-based sticker price (" + (pi.auto ? money(pi.auto) : "—") + ")."));
+    const act = el("div", "tx-act");
+    const save = el("button", "mini", "Save"); save.type = "button";
+    save.onclick = async () => {
+      const q = Math.max(0, Math.round(parseFloat(qty.value) || 0)), c = parseFloat(cost.value), o = parseFloat(own.value);
+      save.disabled = true;
+      try {
+        if (q === 0) await invCol.doc(id).delete();
+        else await invCol.doc(id).update({ qty: q, cost: c >= 0 ? c : null, custom: o > 0 ? o : null });
+        ivOpen = null; renderInv();
+      } catch { save.disabled = false; save.textContent = "Retry"; }
+    };
+    act.append(save);
+    if (pi.sticker && (pi.tag == null || pi.restick)) {
+      const done = el("button", "mini", "I re-stickered it at " + money(pi.sticker)); done.type = "button";
+      done.onclick = async () => { done.disabled = true; try { await invCol.doc(id).update({ tag: pi.sticker }); } catch { done.disabled = false; } };
+      act.append(done);
+    }
+    const del = el("button", "mini danger", "Remove"); del.type = "button";
+    let armed = null;
+    del.onclick = async () => {
+      if (!armed) { del.textContent = "Tap again to remove"; armed = setTimeout(() => { armed = null; del.textContent = "Remove"; }, 4000); return; }
+      clearTimeout(armed); del.disabled = true;
+      try { await invCol.doc(id).delete(); ivOpen = null; } catch { del.disabled = false; del.textContent = "Remove"; armed = null; }
+    };
+    act.append(del);
+    box.append(act);
+    return box;
+  }
+
+  // ---------- checkout ----------
+  let cart = [], payMethod = "cash", discEdited = "pct";
+  function renderShowSelect() {
+    const s = $("co-show"); let cur = ""; try { cur = localStorage.getItem("vendShow") || ""; } catch {}
+    s.replaceChildren(new Option("No show (other sale)", ""));
+    for (const d of showDocs) { const x = d.data(); if (x) s.append(new Option(String(x.name || "Show") + " · " + fmtShowDate(x.date), d.id)); }
+    s.value = showDocs.some((d) => d.id === cur) ? cur : "";
+  }
+  $("co-show").onchange = () => { try { localStorage.setItem("vendShow", $("co-show").value); } catch {} };
+  const fmtShowDate = (d) => d ? new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+  let coT;
+  $("co-q").addEventListener("input", () => { clearTimeout(coT); coT = setTimeout(renderCoRes, 120); });
+  function renderCoRes() {
+    const box = $("co-res"); box.replaceChildren();
+    const qs = tokens($("co-q").value); if (!qs.length) return;
+    const inv = invDocs.map((d) => ({ id: d.id, it: d.data() })).filter((x) => x.it && (+x.it.qty || 0) > 0 &&
+      qs.every((t) => norm([x.it.name, x.it.set, x.it.number, x.it.variant].join(" ")).includes(t))).slice(0, 8);
+    if (!inv.length) { box.append(el("p", "sub-note", invDocs.length ? "No cards in your inventory match." : "Your inventory is empty. Add cards on the Inventory tab.")); return; }
+    for (const { id, it } of inv) {
+      const pi = priceInfo(it), inCart = cart.find((c) => c.invId === id)?.qty || 0, left = (+it.qty || 0) - inCart;
+      const b = el("button", "cand"); b.type = "button"; b.disabled = left <= 0;
+      b.append(el("span", "n", (left > 0 ? "+ " : "") + it.name), el("span", "p", pi.sticker ? money(pi.sticker) : "—"),
+        el("span", "s", [it.set, it.number, it.variant].filter(Boolean).join(" · ") + " · " + left + " left"));
+      b.onclick = () => { addToCart(id, it, pi); renderCoRes(); };
+      box.append(b);
+    }
+  }
+  function addToCart(id, it, pi) {
+    const line = cart.find((c) => c.invId === id);
+    if (line) line.qty++;
+    else cart.push({ invId: id, name: it.name, set: it.set || "", number: it.number || "", variant: it.variant || "", cardId: it.cardId ?? null, cost: it.cost ?? null, qty: 1, price: pi.sticker || 0 });
+    renderCart();
+  }
+  function renderCart() {
+    const inv = invMap(), box = $("co-cart"); box.replaceChildren();
+    cart = cart.filter((c) => inv.has(c.invId) || c.qty > 0);
+    cart.forEach((c, i) => {
+      const max = +(inv.get(c.invId)?.qty || 0);
+      const row = el("div", "co-row");
+      const main = el("div", "lr-main"); main.append(el("b", null, c.name), el("small", null, [c.set, c.number, c.variant].filter(Boolean).join(" · ")));
+      const mw = el("div", "money"); const pr = el("input"); pr.type = "number"; pr.inputMode = "decimal"; pr.min = "0"; pr.step = "0.01"; pr.value = (+c.price).toFixed(2); pr.setAttribute("aria-label", c.name + " price each");
+      pr.oninput = () => { c.price = parseFloat(pr.value) || 0; updateCoTotals(); };
+      mw.append(el("span", null, "$"), pr);
+      const qty = el("div", "qty");
+      const minus = el("button", "mini", "−"); minus.type = "button"; minus.setAttribute("aria-label", "One fewer");
+      const n = el("span", null, String(c.qty));
+      const plus = el("button", "mini", "+"); plus.type = "button"; plus.setAttribute("aria-label", "One more"); plus.disabled = c.qty >= max;
+      minus.onclick = () => { c.qty--; if (c.qty <= 0) cart.splice(i, 1); renderCart(); renderCoRes(); };
+      plus.onclick = () => { if (c.qty < max) { c.qty++; renderCart(); renderCoRes(); } };
+      qty.append(minus, n, plus);
+      row.append(main, mw, qty); box.append(row);
+    });
+    $("co-empty").hidden = cart.length > 0;
+    updateCoTotals();
+  }
+  const cartSub = () => round2(cart.reduce((a, c) => a + (+c.price || 0) * c.qty, 0));
+  function updateCoTotals(from) {
+    const sub = cartSub(); $("co-sub").textContent = money(sub);
+    if (from === "total") {
+      const t = num("co-total");
+      $("co-disc").value = sub > 0 && t >= 0 ? String(round2((1 - t / sub) * 100)) : "";
+    } else {
+      const dp = num("co-disc");
+      $("co-total").value = cart.length ? fix(sub * (1 - (dp > 0 ? dp : 0) / 100)) : "";
+    }
+    $("co-done").disabled = !cart.length || !salesCol;
+  }
+  $("co-disc").addEventListener("input", () => updateCoTotals("disc"));
+  $("co-total").addEventListener("input", () => updateCoTotals("total"));
+  for (const b of document.querySelectorAll(".seg-b[data-pay]")) b.onclick = () => {
+    payMethod = b.dataset.pay;
+    for (const x of document.querySelectorAll(".seg-b[data-pay]")) x.setAttribute("aria-pressed", String(x === b));
+  };
+  $("co-done").onclick = async () => {
+    if (!salesCol || !cart.length) return;
+    const sub = cartSub(), total = num("co-total");
+    if (!(total >= 0)) { $("co-total").focus(); return; }
+    const inv = invMap();
+    for (const c of cart) if (c.qty > (+(inv.get(c.invId)?.qty) || 0)) { $("co-msg").className = "status err"; $("co-msg").textContent = c.name + ": not enough left in inventory."; return; }
+    const items = cart.map((c) => ({ invId: c.invId, name: c.name, set: c.set, number: c.number, variant: c.variant, cardId: c.cardId, qty: c.qty, price: +c.price || 0, cost: c.cost }));
+    const sale = { at: Date.now(), showId: $("co-show").value || null, method: payMethod, items, subtotal: sub, total: round2(total),
+      discountPct: sub > 0 ? round2((1 - total / sub) * 100) : 0, cogs: round2(items.reduce((a, x) => a + (+x.cost || 0) * x.qty, 0)) };
+    $("co-done").disabled = true;
+    try {
+      await salesCol.doc().set(sale);
+      for (const x of items) {
+        const left = (+(inv.get(x.invId)?.qty) || 0) - x.qty;
+        if (left <= 0) await invCol.doc(x.invId).delete(); else await invCol.doc(x.invId).update({ qty: left });
+      }
+      cart = []; $("co-disc").value = ""; renderCart(); $("co-q").value = ""; renderCoRes();
+      $("co-msg").className = "status"; $("co-msg").textContent = "Sale recorded: " + money(sale.total) + " (" + sale.method + ").";
+    } catch (e) {
+      $("co-msg").className = "status err"; $("co-msg").textContent = "Couldn't record the sale. Try again.";
+    } finally { updateCoTotals(); }
+  };
+  async function undoSale(id, s) {
+    const inv = invMap();
+    for (const x of Array.isArray(s.items) ? s.items : []) {
+      const cur = inv.get(x.invId);
+      if (cur) await invCol.doc(x.invId).update({ qty: (+cur.qty || 0) + (+x.qty || 0) });
+      else {
+        const it = { name: x.name, set: x.set || "", number: x.number || "", variant: x.variant || "", cardId: x.cardId ?? null, cost: x.cost ?? null, qty: +x.qty || 1, custom: null, addedAt: Date.now() };
+        it.tag = priceInfo(it).sticker; it.market = priceInfo(it).market;
+        await invCol.doc(x.invId).set(it);
+      }
+    }
+    await salesCol.doc(id).delete();
+  }
+  const methodName = (m) => (m === "card" ? "Card" : m === "trade" ? "Trade" : "Cash");
+  function saleRow(d, s, withUndo) {
+    const row = el("div", "sale");
+    const items = Array.isArray(s.items) ? s.items : [];
+    const top = el("div", "tx-top");
+    const n = items.reduce((a, x) => a + (+x.qty || 0), 0);
+    top.append(el("b", null, items.length === 1 ? String(items[0].name) + (n > 1 ? " ×" + n : "") : n + " cards"), el("time", null, new Date(+s.at || 0).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
+    const nums = el("div", "tx-nums");
+    const it2 = (l, v, cls) => { const sp = el("span"); const b = el("b", cls, v); sp.append(l + " ", b); nums.append(sp); };
+    it2("Total", money(+s.total || 0)); nums.append(el("span", "badge lot", methodName(s.method)));
+    const prof = (+s.total || 0) - (+s.cogs || 0); it2("Made", (prof < 0 ? "−" : "+") + money(Math.abs(prof)), prof < 0 ? "down" : "up");
+    row.append(top, nums);
+    if (items.length > 1) row.append(el("small", "sale-items", items.map((x) => x.name + (x.qty > 1 ? " ×" + x.qty : "")).join(", ")));
+    if (withUndo) {
+      const u = el("button", "mini", "Undo sale"); u.type = "button"; let armed = null;
+      u.onclick = async () => {
+        if (!armed) { u.textContent = "Tap again: cards go back to inventory"; armed = setTimeout(() => { armed = null; u.textContent = "Undo sale"; }, 4000); return; }
+        clearTimeout(armed); u.disabled = true;
+        try { await undoSale(d.id, s); } catch { u.disabled = false; u.textContent = "Undo sale"; armed = null; }
+      };
+      const a = el("div", "tx-act"); a.append(u); row.append(a);
+    }
+    return row;
+  }
+  function renderSales() {
+    const box = $("co-sales"); box.replaceChildren();
+    const recent = saleDocs.slice(0, 10);
+    if (!recent.length) { box.append(el("p", "sub-note", "No sales yet.")); return; }
+    for (const d of recent) { const s = d.data(); if (s) box.append(saleRow(d, s, true)); }
+  }
+
+  // ---------- shows ----------
+  try { $("sh-date").value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); } catch {}
+  $("sh-add").onclick = async () => {
+    if (!showsCol) return;
+    const name = $("sh-name").value.trim().slice(0, 80);
+    if (!name) { $("sh-name").focus(); return; }
+    const fee = parseFloat($("sh-fee").value);
+    $("sh-add").disabled = true;
+    try {
+      const ref = showsCol.doc();
+      await ref.set({ name, date: $("sh-date").value || null, fee: fee >= 0 ? fee : 0, createdAt: Date.now() });
+      try { localStorage.setItem("vendShow", ref.id); } catch {}
+      renderShowSelect();
+      $("sh-name").value = ""; $("sh-fee").value = "";
+      $("sh-msg").className = "status"; $("sh-msg").textContent = "Show added and set as the show for checkout.";
+    } catch { $("sh-msg").className = "status err"; $("sh-msg").textContent = "Couldn't save the show. Try again."; }
+    finally { $("sh-add").disabled = !showsCol; }
+  };
+  let shOpen = null;
+  function showStats(showId) {
+    const st = { n: 0, cards: 0, total: 0, cogs: 0, cash: 0, card: 0, trade: 0, sales: [] };
+    for (const d of saleDocs) {
+      const s = d.data(); if (!s || (s.showId || null) !== showId) continue;
+      st.n++; st.total += +s.total || 0; st.cogs += +s.cogs || 0; st[s.method === "card" ? "card" : s.method === "trade" ? "trade" : "cash"] += +s.total || 0;
+      st.cards += (Array.isArray(s.items) ? s.items : []).reduce((a, x) => a + (+x.qty || 0), 0);
+      st.sales.push([d, s]);
+    }
+    return st;
+  }
+  function renderShows() {
+    const list = $("sh-list"); list.replaceChildren();
+    const entries = showDocs.map((d) => [d.id, d.data()]).filter(([, x]) => x);
+    const other = showStats(null);
+    if (other.n) entries.push([null, { name: "Sales without a show", fee: 0, date: null }]);
+    if (!entries.length) { list.append(el("p", "sub-note", "No shows yet. Add one above, then pick it at checkout.")); return; }
+    for (const [id, x] of entries) {
+      const st = id === null ? other : showStats(id), fee = +x.fee || 0, profit = st.total - st.cogs - fee, key = id ?? "none";
+      const wrap = el("div", "iv");
+      const row = el("button", "iv-row"); row.type = "button"; row.setAttribute("aria-expanded", String(shOpen === key));
+      const stk = el("span", "stk " + (profit < 0 ? "down" : "up"), (profit < 0 ? "−" : "+") + money(Math.abs(profit)));
+      stk.append(el("small", null, "profit"));
+      row.append(el("span", "n", String(x.name)), stk, el("span", "s", [fmtShowDate(x.date), st.n + (st.n === 1 ? " sale" : " sales"), money(st.total) + " sold"].filter(Boolean).join(" · ")));
+      row.onclick = () => { shOpen = shOpen === key ? null : key; renderShows(); };
+      wrap.append(row);
+      if (shOpen === key) {
+        const box = el("div", "iv-edit");
+        const g = el("div", "stats");
+        const tile = (l, v, s) => { const t = el("div", "stat"); t.append(el("span", null, l), el("b", null, v), el("small", null, s)); g.append(t); };
+        tile("Sales", money(st.total), st.cards + " cards sold");
+        tile("Cost of cards", money(st.cogs), "What you paid for them");
+        tile("Table fee", money(fee), id === null ? "None" : "For this show");
+        tile("Profit", (profit < 0 ? "−" : "") + money(Math.abs(profit)), "Sales − cost − fee");
+        box.append(g, el("p", "foot", "Cash " + money(st.cash) + " · Card " + money(st.card) + " · Trade " + money(st.trade)));
+        for (const [d, s] of st.sales.slice(0, 50)) box.append(saleRow(d, s, false));
+        if (id !== null) {
+          const act = el("div", "tx-act");
+          const use = el("button", "mini", "Use at checkout"); use.type = "button";
+          use.onclick = () => { try { localStorage.setItem("vendShow", id); } catch {} renderShowSelect(); location.hash = "checkout"; };
+          const del = el("button", "mini danger", "Delete show"); del.type = "button"; let armed = null;
+          del.onclick = async () => {
+            if (!armed) { del.textContent = "Tap again: its sales move to “without a show”"; armed = setTimeout(() => { armed = null; del.textContent = "Delete show"; }, 4000); return; }
+            clearTimeout(armed); del.disabled = true;
+            try { for (const [sd] of st.sales) await salesCol.doc(sd.id).update({ showId: null }); await showsCol.doc(id).delete(); shOpen = null; }
+            catch { del.disabled = false; del.textContent = "Delete show"; armed = null; }
+          };
+          act.append(use, del); box.append(act);
+        }
+        wrap.append(box);
+      }
+      list.append(wrap);
+    }
   }
 
   // ---------- AI price outlook ----------

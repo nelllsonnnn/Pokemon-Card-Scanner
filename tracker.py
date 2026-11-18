@@ -31,8 +31,8 @@ def get(url, tries=4):
 
 
 def load_snapshot(day, cache):
-    """Return {(productId, subType): marketPrice} for a date, or None if no archive."""
-    path = os.path.join(cache, f"prices2-{day}.json")
+    """Return {(productId, subType): (market, low, mid)} for a date, or None if no archive."""
+    path = os.path.join(cache, f"prices3-{day}.json")
     if os.path.exists(path):
         return {tuple(json.loads(k)): tuple(v) for k, v in json.load(open(path)).items()}
     try:
@@ -47,7 +47,7 @@ def load_snapshot(day, cache):
     for n in names:
         for p in json.load(open(os.path.join(root, n)))["results"]:
             if p.get("marketPrice"):
-                out[(p["productId"], p["subTypeName"])] = (p["marketPrice"], p.get("lowPrice"))
+                out[(p["productId"], p["subTypeName"])] = (p["marketPrice"], p.get("lowPrice"), p.get("midPrice"))
     json.dump({json.dumps(list(k)): v for k, v in out.items()}, open(path, "w"))
     return out
 
@@ -112,6 +112,8 @@ def main():
     d1, prev = find_snapshot(d0 - dt.timedelta(days=1), a.cache)
     d7, week = find_snapshot(d0 - dt.timedelta(days=7), a.cache)
     d30, month = find_snapshot(d0 - dt.timedelta(days=30), a.cache)
+    # Each of the last 8 days, to count how often a card's market price moved (it moves only when the card sells).
+    daily = [now] + [load_snapshot((d0 - dt.timedelta(days=i)).isoformat(), a.cache) for i in range(1, 8)]
     cat = load_catalog(a.cache)
 
     cards, alerts = [], []
@@ -120,13 +122,15 @@ def main():
         v = snap.get(key) if snap else None
         return v[0] if v else None
 
-    for (pid, sub), (price, low) in now.items():
+    for (pid, sub), (price, low, mid) in now.items():
         info = cat.get(pid)
         if not info:
             continue
         k = (pid, sub)
         p1, p7, p30 = mk(prev, k), mk(week, k), mk(month, k)
-        row = {**info, "id": pid, "variant": sub, "price": price, "low": low,
+        seen = [s_.get(k) for s_ in daily if s_]
+        chg7 = sum(1 for x, y in zip(seen, seen[1:]) if x and y and x[0] != y[0])
+        row = {**info, "id": pid, "variant": sub, "price": price, "low": low, "mid": mid, "chg7": chg7,
                "p1": p1, "p7": p7, "p30": p30,
                "c1": pct(price, p1), "c7": pct(price, p7), "c30": pct(price, p30)}
         cards.append(row)
@@ -215,17 +219,18 @@ def write_dashboard_files(result, a, thin):
 
 
 def write_price_file(cards, dates, out):
-    """scanner/prices.json: every single's current, 1/7/30-day-ago price, for the card scanner."""
+    """scanner/prices.json: every single's current, 1/7/30-day-ago price, mid listing price and
+    number of days in the last week its market price changed (a sales-activity signal), for the card scanner."""
     sets, idx, rows = [], {}, []
     for c in cards:
         if c["set"] not in idx:
             idx[c["set"]] = len(sets)
             sets.append(c["set"])
         rows.append([c["id"], c["name"], idx[c["set"]], c["number"], c["rarity"], c["variant"],
-                     c["price"], c["low"], c["p1"], c["p7"], c["p30"]])
+                     c["price"], c["low"], c["p1"], c["p7"], c["p30"], c["mid"], c["chg7"]])
     os.makedirs(os.path.join(out, "scanner"), exist_ok=True)
     json.dump({"asof": dates["now"], "d7": dates["d7"], "d30": dates["d30"], "sets": sets,
-               "cols": ["id", "name", "set", "number", "rarity", "variant", "price", "low", "p1", "p7", "p30"],
+               "cols": ["id", "name", "set", "number", "rarity", "variant", "price", "low", "p1", "p7", "p30", "mid", "chg7"],
                "rows": rows}, open(os.path.join(out, "scanner", "prices.json"), "w"), separators=(",", ":"))
 
 
