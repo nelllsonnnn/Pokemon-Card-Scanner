@@ -273,6 +273,9 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .sh-phase { margin-top: 2px; }
 .sh-done { margin: 0; color: var(--good); font-weight: 600; font-size: .9rem; }
 .mini.fin { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.tr-box { display: grid; gap: 8px; }
+.tr-diff { margin: 0; font-weight: 700; font-size: .95rem; color: var(--muted); }
+.tr-diff.up { color: var(--good); } .tr-diff.down { color: var(--bad); }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -619,18 +622,26 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       <div class="lot-list" id="co-cart"></div>
       <p class="sub-note" id="co-empty">Cart is empty. Find cards above to add them.</p>
       <div class="lot-tot"><span>Sticker total</span><b id="co-sub">$0.00</b></div>
-      <div class="calc two">
+      <div class="seg" role="group" aria-label="Payment">
+        <button class="seg-b" type="button" data-pay="cash" aria-pressed="true">Cash</button>
+        <button class="seg-b" type="button" data-pay="trade" aria-pressed="false">Trade</button>
+      </div>
+      <div class="calc two" id="co-cash-box">
         <div class="field"><label class="lbl" for="co-disc">Discount %</label><div class="money pct"><input id="co-disc" type="number" inputmode="decimal" min="0" max="100" step="1" placeholder="0"><span>%</span></div></div>
         <div class="field"><label class="lbl" for="co-total">Total</label><div class="money good"><span>$</span><input id="co-total" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
       </div>
-      <div class="seg three" role="group" aria-label="Payment">
-        <button class="seg-b" type="button" data-pay="cash" aria-pressed="true">Cash</button>
-        <button class="seg-b" type="button" data-pay="card" aria-pressed="false">Card</button>
-        <button class="seg-b" type="button" data-pay="trade" aria-pressed="false">Trade</button>
+      <div class="tr-box" id="co-trade-box" hidden>
+        <div class="calc two">
+          <div class="field"><label class="lbl" for="tr-mkt">Trade market</label><div class="money"><span>$</span><input id="tr-mkt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+          <div class="field"><label class="lbl" for="tr-pct">Trade %</label><div class="money pct"><input id="tr-pct" type="number" inputmode="decimal" min="0" max="200" step="1" placeholder="80"><span>%</span></div></div>
+          <div class="field"><label class="lbl" for="tr-val">Trade value</label><div class="money"><span>$</span><input id="tr-val" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+          <div class="field"><label class="lbl" for="tr-my">My card</label><div class="money"><span>$</span><input id="tr-my" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+        </div>
+        <p class="tr-diff" id="tr-diff">Enter the customer&rsquo;s card value to see who pays the difference.</p>
       </div>
       <button class="btn primary" id="co-done" type="button" disabled>Complete sale</button>
       <div class="status" id="co-msg" role="status"></div>
-      <p class="foot">Type a discount or a final total; the other one follows. Sold cards come out of your inventory.</p>
+      <p class="foot" id="co-foot">Type a discount or a final total; the other one follows. Sold cards come out of your inventory.</p>
     </section>
 
     <section class="panel" aria-labelledby="rs-h">
@@ -2229,6 +2240,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     } else {
       const dp = num("co-disc");
       $("co-total").value = cart.length ? fix(sub * (1 - (dp > 0 ? dp : 0) / 100)) : "";
+      if (payMethod === "trade") { $("tr-my").value = $("co-total").value; trCalc(); }
     }
     $("co-done").disabled = !cart.length || !salesCol;
   }
@@ -2237,7 +2249,35 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   for (const b of document.querySelectorAll(".seg-b[data-pay]")) b.onclick = () => {
     payMethod = b.dataset.pay;
     for (const x of document.querySelectorAll(".seg-b[data-pay]")) x.setAttribute("aria-pressed", String(x === b));
+    const trade = payMethod === "trade";
+    $("co-cash-box").hidden = trade; $("co-trade-box").hidden = !trade;
+    $("co-foot").textContent = trade
+      ? "Trade value = trade market \u00d7 trade %; type any two and the third follows. My card is the value of your cards in the cart. Sold cards come out of your inventory."
+      : "Type a discount or a final total; the other one follows. Sold cards come out of your inventory.";
+    if (trade) { $("tr-my").value = $("co-total").value; trCalc(); }
+    updateCoTotals();
   };
+  // ---------- trade: the two trade boxes you typed in last decide the third ----------
+  const TR = ["tr-mkt", "tr-pct", "tr-val"];
+  let recentT = ["tr-pct", "tr-mkt"];
+  try { const p = localStorage.getItem("tradePct"); if (p) $("tr-pct").value = p; } catch {}
+  function trCalc() {
+    const t = targetOf(TR, recentT), m = num("tr-mkt"), pc = num("tr-pct"), v = num("tr-val");
+    if (t === "tr-val") $("tr-val").value = m >= 0 && pc >= 0 ? fix(m * pc / 100) : "";
+    else if (t === "tr-mkt") $("tr-mkt").value = v >= 0 && pc > 0 ? fix(v / pc * 100) : "";
+    else $("tr-pct").value = v >= 0 && m > 0 ? String(round2(v / m * 100)) : "";
+    for (const id of TR) $(id).parentElement.classList.toggle("good", id === t);
+    const tv = num("tr-val"), my = num("tr-my"), el2 = $("tr-diff");
+    if (!(tv >= 0) || !(my >= 0)) { el2.className = "tr-diff"; el2.textContent = "Enter the customer\u2019s card value to see who pays the difference."; return; }
+    const d = round2(my - tv);
+    el2.className = "tr-diff " + (d > 0 ? "up" : d < 0 ? "down" : "");
+    el2.textContent = d > 0 ? "Customer pays you " + money(d) + " cash" : d < 0 ? "You pay the customer " + money(-d) + " cash" : "Even trade, no cash";
+  }
+  for (const id of TR) $(id).addEventListener("input", () => {
+    if (id === "tr-pct") { try { localStorage.setItem("tradePct", $("tr-pct").value); } catch {} }
+    recentT = touch(recentT, id); trCalc();
+  });
+  $("tr-my").addEventListener("input", () => { $("co-total").value = $("tr-my").value; updateCoTotals("total"); trCalc(); });
   $("co-done").onclick = async () => {
     if (!salesCol || !cart.length) return;
     const sub = cartSub(), total = num("co-total");
@@ -2247,6 +2287,12 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const items = cart.map((c) => ({ invId: c.invId, name: c.name, set: c.set, number: c.number, variant: c.variant, cardId: c.cardId, qty: c.qty, price: +c.price || 0, cost: c.cost, cond: c.cond ?? null }));
     const sale = { at: Date.now(), showId: $("co-show").value || null, method: payMethod, items, subtotal: sub, total: round2(total),
       discountPct: sub > 0 ? round2((1 - total / sub) * 100) : 0, cogs: round2(items.reduce((a, x) => a + (+x.cost || 0) * x.qty, 0)) };
+    if (payMethod === "trade") {
+      const tv = num("tr-val");
+      if (!(tv >= 0)) { $("co-msg").className = "status err"; $("co-msg").textContent = "Enter the trade value (or trade market and trade %)."; $("tr-mkt").focus(); return; }
+      const tm = num("tr-mkt"), tp = num("tr-pct");
+      Object.assign(sale, { tradeMarket: tm >= 0 ? round2(tm) : null, tradePct: tp >= 0 ? tp : null, tradeValue: round2(tv), cashDiff: round2(total - tv) });
+    }
     $("co-done").disabled = true;
     try {
       await salesCol.doc().set(sale);
@@ -2254,8 +2300,10 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         const left = (+(inv.get(x.invId)?.qty) || 0) - x.qty;
         if (left <= 0) await invCol.doc(x.invId).delete(); else await invCol.doc(x.invId).update({ qty: left });
       }
-      cart = []; $("co-disc").value = ""; renderCart(); $("co-q").value = ""; renderCoRes();
-      $("co-msg").className = "status"; $("co-msg").textContent = "Sale recorded: " + money(sale.total) + " (" + sale.method + ").";
+      cart = []; $("co-disc").value = ""; $("tr-mkt").value = ""; $("tr-val").value = ""; $("tr-my").value = ""; recentT = ["tr-pct", "tr-mkt"]; trCalc(); renderCart(); $("co-q").value = ""; renderCoRes();
+      $("co-msg").className = "status"; $("co-msg").textContent = sale.method === "trade"
+        ? "Trade recorded: " + money(sale.total) + " of your cards for " + money(sale.tradeValue) + " in trade" + (sale.cashDiff > 0 ? ", customer paid " + money(sale.cashDiff) : sale.cashDiff < 0 ? ", you paid " + money(-sale.cashDiff) : "") + "."
+        : "Sale recorded: " + money(sale.total) + " (cash).";
     } catch (e) {
       $("co-msg").className = "status err"; $("co-msg").textContent = "Couldn't record the sale. Try again.";
     } finally { updateCoTotals(); }
@@ -2283,8 +2331,15 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const nums = el("div", "tx-nums");
     const it2 = (l, v, cls) => { const sp = el("span"); const b = el("b", cls, v); sp.append(l + " ", b); nums.append(sp); };
     it2("Total", money(+s.total || 0)); nums.append(el("span", "badge lot", methodName(s.method)));
+    let tradeNote = null;
+    if (s.method === "trade" && s.tradeValue != null) {
+      const cd = +s.cashDiff || 0;
+      tradeNote = (el("small", "sale-items", "Trade-in " + money(+s.tradeValue) + (s.tradeMarket != null && s.tradePct != null ? " (" + money(+s.tradeMarket) + " \u00d7 " + s.tradePct + "%)" : "") +
+        (cd > 0 ? " \u00b7 customer paid " + money(cd) : cd < 0 ? " \u00b7 you paid " + money(-cd) : " \u00b7 even")));
+    }
     const prof = (+s.total || 0) - (+s.cogs || 0); it2("Made", (prof < 0 ? "−" : "+") + money(Math.abs(prof)), prof < 0 ? "down" : "up");
     row.append(top, nums);
+    if (tradeNote) row.append(tradeNote);
     if (items.length > 1) row.append(el("small", "sale-items", items.map((x) => x.name + (x.qty > 1 ? " ×" + x.qty : "")).join(", ")));
     if (withUndo) {
       const u = el("button", "mini", "Undo sale"); u.type = "button"; let armed = null;
@@ -2326,9 +2381,10 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   $("sh-inv-use").onclick = () => { $("sh-inv").value = round2(ivValueNow).toFixed(2); };
   let shOpen = null;
   function showStats(showId) {
-    const st = { n: 0, cards: 0, total: 0, cogs: 0, cash: 0, card: 0, trade: 0, sold: 0, sales: [] };
+    const st = { n: 0, cards: 0, total: 0, cogs: 0, cash: 0, card: 0, trade: 0, tradeIn: 0, tradeCash: 0, sold: 0, sales: [] };
     for (const d of saleDocs) {
       const s = d.data(); if (!s || (s.showId || null) !== showId) continue;
+      if (s.method === "trade") { st.tradeIn += +s.tradeValue || 0; st.tradeCash += +s.cashDiff || 0; }
       st.n++; st.total += +s.total || 0; st.cogs += +s.cogs || 0; st[s.method === "card" ? "card" : s.method === "trade" ? "trade" : "cash"] += +s.total || 0;
       st.cards += (Array.isArray(s.items) ? s.items : []).reduce((a, x) => a + (+x.qty || 0), 0);
       st.sold += (Array.isArray(s.items) ? s.items : []).reduce((a, x) => a + (+x.price || 0) * (+x.qty || 0), 0);
@@ -2377,7 +2433,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
             }
             grid.append(f);
           };
-          const expectCash = (x.cash != null ? +x.cash : 0) + st.cash;
+          const expectCash = (x.cash != null ? +x.cash : 0) + st.cash + st.tradeCash;
           box.append(el("span", "lbl sh-phase", "Pre-show"));
           const pre = el("div", "calc two");
           field(pre, "Inventory", "inv", "What you brought");
@@ -2406,7 +2462,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         tile("Cost of cards", money(st.cogs), "What you paid for them");
         tile("Table fee", money(fee), id === null ? "None" : "For this show");
         tile("Profit", (profit < 0 ? "−" : "") + money(Math.abs(profit)), "Sales − cost − fee");
-        box.append(g, el("p", "foot", "Cash " + money(st.cash) + " · Card " + money(st.card) + " · Trade " + money(st.trade)));
+        box.append(g, el("p", "foot", "Cash sales " + money(st.cash) + " \u00b7 Trades " + money(st.trade) + (st.trade ? " (trade-ins " + money(st.tradeIn) + ", cash difference " + (st.tradeCash < 0 ? "\u2212" : "+") + money(Math.abs(st.tradeCash)) + ")" : "") + (st.card ? " \u00b7 Card " + money(st.card) : "")));
         for (const [d, s] of st.sales.slice(0, 50)) box.append(saleRow(d, s, false));
         if (id !== null) {
           const act = el("div", "tx-act");
