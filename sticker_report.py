@@ -8,10 +8,10 @@ the cheapest listing is to market + 15% how close the mid listing price is to
 market.  60+ = high, 30-59 = medium, below 30 = low.  A card needs a new sticker
 when the price on its sticker (tag) is off by 5% or more (at least $0.50).
 
-Usage:  python3 sticker_report.py INV_DIR PRICES_JSON
+Usage:  python3 sticker_report.py INV_DIR PRICES_JSON [MORE_PRICES_JSON ...]
   INV_DIR      one JSON file per inventory document (ArtifactData list out_dir of
                data/users/me/vend/inv)
-  PRICES_JSON  the scanner's prices.json
+  PRICES_JSON  the scanner's prices.json (and prices_jp.json for Japanese cards)
 Prints a plain-text report.
 """
 import glob, json, math, os, re, sys
@@ -62,13 +62,15 @@ def money(x):
     return "—" if x is None else f"${x:,.2f}"
 
 
-def main(inv_dir, prices_path):
-    d = json.load(open(prices_path))
-    C = {c: i for i, c in enumerate(d["cols"])}
-    live = {}
-    for r in d["rows"]:
-        live[(r[C["id"]], r[C["variant"]])] = {k: (r[C[k]] if k in C else None)
-                                               for k in ("price", "low", "mid", "chg7", "p7")}
+def main(inv_dir, *prices_paths):
+    live, d = {}, None
+    for path in prices_paths:
+        pf = json.load(open(path))
+        d = d or pf
+        C = {c: i for i, c in enumerate(pf["cols"])}
+        for r in pf["rows"]:
+            live[(r[C["id"]], r[C["variant"]])] = {k: (r[C[k]] if k in C else None)
+                                                   for k in ("price", "low", "mid", "chg7", "p7")}
     restick, own, moves = [], [], []
     n_cards = 0
     value = 0.0
@@ -88,7 +90,8 @@ def main(inv_dir, prices_path):
         sticker = custom or auto
         tag = it.get("tag") if (it.get("tag") or 0) > 0 else None
         value += (sticker or 0) * qty
-        label = " · ".join(x for x in (it.get("name"), it.get("set"), it.get("number"), it.get("variant"), ck) if x)
+        lang = "JP" if re.match(r"(ja|jp|japanese)", str(it.get("lang") or ""), re.I) else ""
+        label = " · ".join(x for x in (it.get("name"), it.get("set"), it.get("number"), it.get("variant"), lang, ck) if x)
         dl = f"{dm['level']} demand" if dm else "demand unknown"
         if tag and sticker and abs(sticker - tag) >= max(0.5, tag * 0.05):
             restick.append((abs(sticker - tag) * qty, f"{label} (×{qty}): {money(tag)} → {money(sticker)}"
@@ -119,4 +122,4 @@ def main(inv_dir, prices_path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], *sys.argv[2:])

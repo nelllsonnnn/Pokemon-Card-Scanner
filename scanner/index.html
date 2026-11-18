@@ -266,6 +266,8 @@ textarea { width: 100%; font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, mo
 .del-confirm { display: grid; gap: 8px; background: var(--bad-bg); border-radius: 10px; padding: 10px 12px; }
 .del-confirm p { margin: 0; color: var(--fg); font-size: .9rem; }
 .imp-warn { color: var(--bad); font-size: .8rem; font-weight: 600; }
+.stats.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stats.three .stat b { font-size: 1.15rem; overflow-wrap: anywhere; }
 .foot { font-size: .8rem; color: var(--muted); margin: 0; }
 a { color: var(--accent); }
 .tcg { display: flex; align-items: center; gap: 12px; text-decoration: none; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 12px; padding: 14px 16px; min-height: 56px; }
@@ -471,11 +473,10 @@ a { color: var(--accent); }
   <div class="view" data-view="inventory" hidden>
     <section class="panel" aria-labelledby="iv-h">
       <label class="lbl" id="iv-h">Inventory</label>
-      <div class="stats">
+      <div class="stats three">
         <div class="stat"><span>Cards</span><b id="iv-count">0</b><small id="iv-lines">0 listings</small></div>
-        <div class="stat"><span>Sticker value</span><b id="iv-value">$0.00</b><small>At today&rsquo;s sticker prices</small></div>
+        <div class="stat"><span>Sticker value</span><b id="iv-value">$0.00</b><small id="iv-restick">0 to re-sticker</small></div>
         <div class="stat"><span>Cost</span><b id="iv-cost">$0.00</b><small>What you paid</small></div>
-        <div class="stat"><span>Market value</span><b id="iv-market">$0.00</b><small id="iv-restick">0 stickers to update</small></div>
       </div>
       <p class="foot" id="iv-state">Loading your inventory&hellip;</p>
     </section>
@@ -493,7 +494,7 @@ a { color: var(--accent); }
       <input class="file" id="iv-cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
       <input class="file" id="iv-lib" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
       <div class="status" id="iv-status" role="status"></div>
-      <input id="iv-q" type="search" placeholder="Or search name or number" autocomplete="off" enterkeyhint="search" aria-label="Search cards to add">
+      <input id="iv-q" type="search" placeholder="Or search name or number (add &quot;jp&quot; for Japanese)" autocomplete="off" enterkeyhint="search" aria-label="Search cards to add">
       <div class="cands" id="iv-res"></div>
       <div class="slot-btns"><button class="mini" id="iv-manual" type="button">Add a card by hand</button><button class="mini" id="iv-import" type="button">Import CSV</button></div>
       <div class="iv-form" id="iv-form" hidden>
@@ -580,7 +581,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       <input class="file" id="by-cam" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
       <input class="file" id="by-lib" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
       <div class="status" id="by-status" role="status"></div>
-      <input id="by-q" type="search" placeholder="Or search name or number to add" autocomplete="off" enterkeyhint="search" aria-label="Search cards to buy">
+      <input id="by-q" type="search" placeholder="Or search name or number (add &quot;jp&quot; for Japanese)" autocomplete="off" enterkeyhint="search" aria-label="Search cards to buy">
       <div class="cands" id="by-res"></div>
     </section>
 
@@ -730,26 +731,40 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   let cards = [], byId = new Map(), data = null, sel = null, selVar = 0, sample = null, imgOK = false;
 
   // ---------- prices ----------
-  fetch("prices.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
-    data = d;
-    const C = Object.fromEntries(d.cols.map((c, i) => [c, i]));
+  // English cards come from prices.json; Japanese cards (TCGplayer "Pokemon Japan") from prices_jp.json, loaded after.
+  let jpCards = [], jpReady = null;
+  function addRows(d, list, lang) {
+    const C = Object.fromEntries(d.cols.map((c, i) => [c, i])), local = new Map();
     for (const r of d.rows) {
-      let c = byId.get(r[C.id]);
+      let c = local.get(r[C.id]);
       if (!c) {
         const np = numParts(r[C.number]);
-        c = { id: r[C.id], name: r[C.name], set: d.sets[r[C.set]], number: r[C.number], rarity: r[C.rarity], vars: [],
+        c = { id: r[C.id], name: r[C.name], set: d.sets[r[C.set]], number: r[C.number], rarity: r[C.rarity], vars: [], lang,
               nameTok: tokens(r[C.name]), setTok: tokens(d.sets[r[C.set]]), n: np.n, total: np.total };
         c.hay = norm(c.name + " " + c.set + " " + c.number);
-        byId.set(c.id, c); cards.push(c);
+        local.set(c.id, c); byId.set(c.id, c); list.push(c);
       }
       c.vars.push({ variant: r[C.variant], price: r[C.price], low: r[C.low], p1: r[C.p1], p7: r[C.p7], p30: r[C.p30], mid: C.mid != null ? r[C.mid] : null, chg7: C.chg7 != null ? r[C.chg7] : null });
     }
-    for (const c of cards) c.vars.sort((a, b) => b.price - a.price);
+    for (const c of list) c.vars.sort((a, b) => b.price - a.price);
+  }
+  function loadJP() {
+    if (!jpReady) jpReady = fetch("prices_jp.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((d) => { addRows(d, jpCards, "jp"); renderInv(); renderCart(); renderBuy(); return true; })
+      .catch(() => { jpReady = null; return false; });
+    return jpReady;
+  }
+  const isJP = (lang) => /^(ja|jp|japanese)/i.test(String(lang || "").trim());
+  const langTag = (c) => (c && c.lang === "jp" ? " \u00b7 JP" : "");
+  fetch("prices.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
+    data = d;
+    addRows(d, cards, "en");
     $("asof").textContent = `${cards.length.toLocaleString()} cards · TCGplayer prices as of ${new Date(d.asof + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     refreshPhotoButtons();
     if ($("q").value) search();
     buildMovers();
     renderInv(); renderCart(); renderBuy();
+    setTimeout(loadJP, 300);
   }).catch(() => {
     $("asof").textContent = "Couldn't load prices. Reload the page to try again.";
   });
@@ -830,11 +845,11 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     else setStatus("No match found. Try searching by name below.", true);
   }
 
-  function rank(g) {
+  function rank(g, list = cards) {
     const nt = tokens(g.name), np = g.number ? numParts(g.number) : null, stt = tokens(g.set);
     const base = norm(g.name);
     const out = [];
-    for (const c of cards) {
+    for (const c of list) {
       let s = 0;
       const overlap = nt.filter((t) => c.nameTok.includes(t)).length;
       if (overlap) s += overlap * 12 + (norm(c.name).startsWith(base) ? 25 : 0) + (norm(c.name) === base ? 15 : 0);
@@ -1534,16 +1549,25 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const box = $("iv-res"); box.replaceChildren();
     for (const [c, v] of list.slice(0, 12)) {
       const b = el("button", "cand"); b.type = "button";
-      b.append(el("span", "n", c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant));
+      b.append(el("span", "n", c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant + langTag(c)));
       b.onclick = () => ivOpenForm(c, c.vars.indexOf(v));
       box.append(b);
     }
   }
+  // Search English cards, or Japanese cards when the search includes "jp" / "japanese".
+  async function langSearch(text) {
+    let qs = tokens(text);
+    const jp = qs.some((t) => t === "jp" || t === "japanese");
+    qs = qs.filter((t) => t !== "jp" && t !== "japanese");
+    if (jp && !jpCards.length) await loadJP();
+    const list = jp ? jpCards : cards, hits = [];
+    if (qs.length) for (const c of list) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    return hits;
+  }
   let ivT;
-  $("iv-q").addEventListener("input", () => { clearTimeout(ivT); ivT = setTimeout(() => {
+  $("iv-q").addEventListener("input", () => { clearTimeout(ivT); ivT = setTimeout(async () => {
     const qs = tokens($("iv-q").value); if (!qs.length || !data) { $("iv-res").replaceChildren(); return; }
-    const hits = [];
-    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    const hits = await langSearch($("iv-q").value);
     hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
     const rows = []; for (const c of hits) { for (const v of c.vars) rows.push([c, v]); if (rows.length >= 12) break; }
     ivCands(rows);
@@ -1578,7 +1602,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       return { name: $("iv-f-name-in").value.trim().slice(0, 120), set: "", number: "", variant: "", cardId: null, market: m > 0 ? m : null, cond: condName($("iv-f-cond").value) };
     }
     const c = ivPending.c, v = c.vars[ivPending.vi];
-    return { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price, cond: condName($("iv-f-cond").value) };
+    return { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price, cond: condName($("iv-f-cond").value), lang: c.lang === "jp" ? "Japanese" : null };
   }
   for (const [k, name] of CONDS.map((x) => [x[0], x[1]])) $("iv-f-cond").append(new Option(name, k));
   $("iv-f-cond").onchange = () => ivPreview();
@@ -1619,7 +1643,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     try {
       const g = await sample.json(CARD_PROMPT, { images: f });
       if (g?.is_pokemon_card === false) { st.textContent = "That doesn't look like a Pokémon card."; return; }
-      const ranked = rank(g || {});
+      const ranked = isJP(g?.language) && (jpCards.length || await loadJP()) ? rank(g || {}, jpCards) : rank(g || {});
       if (!ranked.length) { st.className = "status err"; st.textContent = "No match found. Try searching by name."; return; }
       st.textContent = "Read as " + [g.name, g.number].filter(Boolean).join(" ") + ". Pick the right one:";
       const rows = []; for (const c of ranked.slice(0, 4)) for (const v of c.vars) rows.push([c, v]);
@@ -1662,7 +1686,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   $("imp-file").onchange = async (e) => {
     const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
     if (f.size > 5e6) { impMsg("That file is over 5 MB. Split it into smaller files.", true); return; }
-    try { impLoad(await f.text()); } catch { impMsg("Couldn't read that file. Save it as CSV and try again.", true); }
+    try { await impLoad(await f.text()); } catch { impMsg("Couldn't read that file. Save it as CSV and try again.", true); }
   };
   $("imp-read").onclick = () => impLoad($("imp-text").value);
   $("imp-cancel").onclick = () => { impRows = []; $("imp-review").hidden = true; impMsg(""); };
@@ -1702,8 +1726,14 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     if (/\b(normal|non holo|nonholo|regular)\b/.test(t)) return "normal";
     return "";
   }
-  function impMatch(r) {
-    if (!byNum) { byNum = new Map(); for (const c of cards) { const a = byNum.get(c.n); if (a) a.push(c); else byNum.set(c.n, [c]); } }
+  const numIdx = new WeakMap();
+  function numIndex(list) {
+    let m = numIdx.get(list);
+    if (!m) { m = new Map(); for (const c of list) { const a = m.get(c.n); if (a) a.push(c); else m.set(c.n, [c]); } numIdx.set(list, m); }
+    return m;
+  }
+  function impMatch(r, L = cards) {
+    const byNum = numIndex(L);
     let list = [], sure = false;
     if (r.pid != null) { const c = byId.get(r.pid); if (c) { list = [c]; sure = true; } }
     const nt = tokens(r.name), st = tokens(r.set);
@@ -1725,7 +1755,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       if (top && (top.ov >= Math.ceil(nt.length / 2) || (top.ss > 0 && top.tot)) && (scored.length === 1 || top.s > scored[1].s)) sure = true;
     }
     if (!list.length && nt.length) {
-      list = rank({ name: r.name, number: r.number, set: r.set });
+      list = rank({ name: r.name, number: r.number, set: r.set }, L);
       // no number: among close name matches, prefer the right set, then the version priced nearest to the cost or sticker
       const ref = r.tag > 0 ? r.tag : r.cost > 0 ? r.cost : null, qn = norm(r.name);
       const pool = list.slice(0, 12).filter((c) => norm(c.name).startsWith(qn));
@@ -1745,7 +1775,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     }
     return { opts, pick: "hand", status: "none" };
   }
-  function impLoad(text) {
+  async function impLoad(text) {
     if (!data) { impMsg("Prices are still loading. Try again in a moment.", true); return; }
     const rows = parseCSV(text);
     if (rows.length < 2) { impMsg("No rows found. The first line should be a header row, like the example.", true); return; }
@@ -1769,8 +1799,12 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       };
       if (!r.name && r.pid == null) continue;
       // prices are for English cards only; other languages are added as typed with the file's market price
-      if (r.lang && !/^(en|english)\b/i.test(r.lang)) impRows.push({ raw: r, opts: [], pick: "hand", status: "none", note: r.lang + " card: English TCGplayer prices don't apply" });
-      else impRows.push({ raw: r, ...impMatch(r) });
+      if (r.lang && !/^(en|english)\b/i.test(r.lang)) {
+        if (isJP(r.lang) && (jpCards.length || (impMsg("Loading Japanese prices\u2026"), await loadJP()))) {
+          const m = impMatch(r, jpCards);
+          impRows.push({ raw: r, ...m, note: m.opts.length ? "Japanese card: matched against TCGplayer\u2019s Japanese cards" : "Japanese card not found on TCGplayer; added as typed" });
+        } else impRows.push({ raw: r, opts: [], pick: "hand", status: "none", note: r.lang + " card: TCGplayer has no prices for this language, so it\u2019s added as typed" });
+      } else impRows.push({ raw: r, ...impMatch(r) });
     }
     if (!impRows.length) { impMsg("No card rows found under the header.", true); return; }
     const n = (s) => impRows.filter((x) => x.status === s).length;
@@ -1791,7 +1825,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         " · ×" + r.qty + (r.cost != null ? " · cost " + money(r.cost) : "")),
         el("span", "dm " + (x.status === "ok" ? "high" : x.status === "check" ? "medium" : "low"), x.status === "ok" ? "Matched" : x.status === "check" ? "Check" : "No match"));
       const sel = el("select", "sel"); sel.setAttribute("aria-label", "Card for " + r.name);
-      x.opts.forEach(([c, v], i) => sel.append(new Option(c.name + " · " + c.set + " · " + c.number + " · " + v.variant + " — " + money(v.price), String(i))));
+      x.opts.forEach(([c, v], i) => sel.append(new Option(c.name + " · " + c.set + " · " + c.number + " · " + v.variant + langTag(c) + " — " + money(v.price), String(i))));
       sel.append(new Option("Add as typed (no price data)" + (r.market ? " — market " + money(r.market) : ""), "hand"), new Option("Skip this row", "skip"));
       sel.value = String(x.pick);
       sel.onchange = () => { x.pick = sel.value === "hand" || sel.value === "skip" ? sel.value : +sel.value; if (x.status !== "ok") x.status = x.status === "none" && sel.value === "skip" ? "none" : x.status; updateImpBtn(); };
@@ -1827,6 +1861,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       let it;
       if (x.pick === "hand") { if (!r.name) continue; it = { name: r.name, set: r.set, number: r.number, variant: r.variant, cardId: null, market: r.market }; }
       else { const [c, v] = x.opts[x.pick]; it = { name: c.name, set: c.set, number: c.number, variant: v.variant, cardId: c.id, market: v.price }; }
+      it.lang = x.pick === "hand" ? (r.lang && !/^(en|english)\b/i.test(r.lang) ? r.lang : null) : (x.opts[x.pick][0].lang === "jp" ? "Japanese" : null);
       it.cost = r.cost; it.cond = r.cond || null; it.custom = r.custom > 0 ? r.custom : null;
       const key = [it.cardId ?? "h:" + norm(it.name + " " + it.set + " " + it.number), it.variant, it.cost, it.cond, it.custom].join("|");
       const g = groups.get(key);
@@ -1855,7 +1890,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   };
 
   // ---------- inventory: list ----------
-  let ivFilter = "all", ivOpen = null;
+  let ivFilter = "all", ivOpen = null, ivShowAll = false;
   for (const b of document.querySelectorAll("[data-ivf]")) b.onclick = () => {
     ivFilter = b.dataset.ivf;
     for (const x of document.querySelectorAll("[data-ivf]")) x.setAttribute("aria-pressed", String(x === b));
@@ -1874,8 +1909,8 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     }
     $("iv-count").textContent = n.toLocaleString();
     $("iv-lines").textContent = items.length + (items.length === 1 ? " listing" : " listings");
-    $("iv-value").textContent = money(value); $("iv-cost").textContent = money(cost); $("iv-market").textContent = money(mkt);
-    $("iv-restick").textContent = restick + (restick === 1 ? " sticker to update" : " stickers to update");
+    $("iv-value").textContent = money(value); $("iv-cost").textContent = money(cost);
+    $("iv-restick").textContent = restick + " to re-sticker";
     $("iv-del-wrap").hidden = !items.length && !$("iv-del-msg").textContent;
     $("iv-del-all").hidden = !items.length;
     $("iv-del-q").textContent = "Delete all " + n.toLocaleString() + (n === 1 ? " card" : " cards") + " (" + items.length + (items.length === 1 ? " listing" : " listings") + ") from your inventory? This can’t be undone. Sales and shows are kept.";
@@ -1888,12 +1923,16 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       .sort((a, b) => (b.pi.sticker || 0) - (a.pi.sticker || 0));
     const list = $("iv-list"); list.replaceChildren();
     if (items.length && !shown.length) list.append(el("p", "sub-note", "No cards match."));
-    for (const { id, it, pi } of shown) {
+    // collapsed to the first 10 cards unless "Show all" is on (an open card stays visible)
+    const LIMIT = 10;
+    const visible = ivShowAll || shown.length <= LIMIT ? shown : shown.filter((x, i) => i < LIMIT || x.id === ivOpen);
+    for (const { id, it, pi } of visible) {
       const wrap = el("div", "iv");
       const row = el("button", "iv-row"); row.type = "button"; row.setAttribute("aria-expanded", String(ivOpen === id));
       const stk = el("span", "stk", pi.sticker ? money(pi.sticker) : "—");
-      stk.append(el("small", null, "Mkt " + (pi.market ? money(pi.market) : "—") + " · ×" + (+it.qty || 0)));
+      stk.append(el("small", null, "Qty " + (+it.qty || 0)));
       const tags = el("span", "iv-tags");
+      if (it.lang && !/^(en|english)\b/i.test(it.lang)) tags.append(el("span", "dm cond", isJP(it.lang) ? "JP" : String(it.lang).slice(0, 3).toUpperCase()));
       tags.append(el("span", "dm cond", pi.ck), demandChip(pi.d));
       if (it.custom > 0) tags.append(el("span", "dm low", "Your price"));
       if (pi.restick) tags.append(el("span", "badge", "Re-sticker " + money(pi.tag) + " → " + money(pi.sticker)));
@@ -1902,6 +1941,12 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       wrap.append(row);
       if (ivOpen === id) wrap.append(ivEditor(id, it, pi));
       list.append(wrap);
+    }
+    if (shown.length > LIMIT) {
+      const more = el("button", "btn", ivShowAll ? "Show fewer" : "Show all " + shown.length.toLocaleString() + " listings");
+      more.type = "button"; more.setAttribute("aria-expanded", String(ivShowAll));
+      more.onclick = () => { ivShowAll = !ivShowAll; renderInv(); if (!ivShowAll) $("iv-list").scrollIntoView({ block: "start" }); };
+      list.append(more);
     }
   }
   $("iv-del-all").onclick = () => { $("iv-del-confirm").hidden = false; $("iv-del-all").disabled = true; $("iv-del-msg").textContent = ""; $("iv-del-no").focus(); };
@@ -1983,7 +2028,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   }
   function buyAdd(c, v) {
     const pct = parseFloat($("by-pct").value);
-    buy.unshift({ cardId: c.id, variant: v.variant, name: c.name, set: c.set, number: c.number, nm: v.price, ck: $("by-cond").value || "NM", qty: 1, pct: pct >= 0 ? pct : 70 });
+    buy.unshift({ cardId: c.id, lang: c.lang === "jp" ? "Japanese" : null, variant: v.variant, name: c.name, set: c.set, number: c.number, nm: v.price, ck: $("by-cond").value || "NM", qty: 1, pct: pct >= 0 ? pct : 70 });
     saveBuy(); renderBuy();
     $("by-msg").textContent = "";
   }
@@ -1991,16 +2036,15 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     const box = $("by-res"); box.replaceChildren();
     for (const [c, v] of rows.slice(0, 12)) {
       const b = el("button", "cand"); b.type = "button";
-      b.append(el("span", "n", "+ " + c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant));
+      b.append(el("span", "n", "+ " + c.name), el("span", "p", money(v.price)), el("span", "s", c.set + " · " + c.number + " · " + v.variant + langTag(c)));
       b.onclick = () => { buyAdd(c, v); b.disabled = true; b.firstChild.textContent = "✓ " + c.name; };
       box.append(b);
     }
   }
   let byT;
-  $("by-q").addEventListener("input", () => { clearTimeout(byT); byT = setTimeout(() => {
+  $("by-q").addEventListener("input", () => { clearTimeout(byT); byT = setTimeout(async () => {
     const qs = tokens($("by-q").value); if (!qs.length || !data) { $("by-res").replaceChildren(); return; }
-    const hits = [];
-    for (const c of cards) if (qs.every((t) => c.hay.includes(t))) { hits.push(c); if (hits.length > 300) break; }
+    const hits = await langSearch($("by-q").value);
     hits.sort((a, b) => b.vars[0].price - a.vars[0].price);
     const rows = []; for (const c of hits) { for (const v of c.vars) rows.push([c, v]); if (rows.length >= 12) break; }
     buyRows(rows);
@@ -2015,7 +2059,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     try {
       const g = await sample.json(CARD_PROMPT, { images: f });
       if (g?.is_pokemon_card === false) { st.textContent = "That doesn't look like a Pokémon card."; return; }
-      const ranked = rank(g || {});
+      const ranked = isJP(g?.language) && (jpCards.length || await loadJP()) ? rank(g || {}, jpCards) : rank(g || {});
       if (!ranked.length) { st.className = "status err"; st.textContent = "No match found. Try searching by name."; return; }
       const want = g.first_edition ? "1st edition" : norm(g.finish);
       const rows = [];
@@ -2032,7 +2076,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
     buy.forEach((b, i) => {
       const row = el("div", "by-row");
       const head = el("div", "by-head");
-      const t = el("div", "lr-main"); t.append(el("b", null, b.name), el("small", null, [b.set, b.number, b.variant].filter(Boolean).join(" · ")));
+      const t = el("div", "lr-main"); t.append(el("b", null, b.name), el("small", null, [b.set, b.number, b.variant, b.lang ? "JP" : ""].filter(Boolean).join(" · ")));
       const rm = el("button", "mini", "✕"); rm.type = "button"; rm.setAttribute("aria-label", "Remove " + b.name);
       rm.onclick = () => { buy.splice(i, 1); saveBuy(); renderBuy(); };
       head.append(t, rm);
@@ -2091,7 +2135,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       while (buy.length) {
         const b = buy[buy.length - 1];
         const { pi, pay } = buyCalc(b);
-        const it = { name: b.name, set: b.set, number: b.number, variant: b.variant, cardId: b.cardId, market: pi.nm ?? b.nm, cond: condName(b.ck), cost: pay };
+        const it = { name: b.name, set: b.set, number: b.number, variant: b.variant, cardId: b.cardId, lang: b.lang ?? null, market: pi.nm ?? b.nm, cond: condName(b.ck), cost: pay };
         const same = invDocs.find((d) => { const x = d.data(); return x && x.cardId === it.cardId && x.variant === it.variant && (x.cost ?? null) === (it.cost ?? null) && condKey(x.cond) === b.ck && !(x.custom > 0); });
         if (same) await invCol.doc(same.id).update({ qty: (+same.data().qty || 0) + b.qty });
         else await invCol.doc().set({ ...it, qty: b.qty, tag: pi.sticker ?? null, custom: null, addedAt: Date.now() });

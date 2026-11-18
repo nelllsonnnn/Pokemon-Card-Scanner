@@ -16,6 +16,7 @@ import py7zr
 
 BASE = "https://tcgcsv.com"
 CAT = 3  # Pokemon (English)
+CATS = {3: "en", 85: "jp"}  # TCGplayer categories: Pokemon, Pokemon Japan
 UA = {"User-Agent": "pokeprice-tracker/1.0"}
 
 
@@ -31,8 +32,8 @@ def get(url, tries=4):
 
 
 def load_snapshot(day, cache):
-    """Return {(productId, subType): (market, low, mid)} for a date, or None if no archive."""
-    path = os.path.join(cache, f"prices3-{day}.json")
+    """Return {(productId, subType): (market, low, mid)} for a date (English and Japanese cards), or None if no archive."""
+    path = os.path.join(cache, f"prices4-{day}.json")
     if os.path.exists(path):
         return {tuple(json.loads(k)): tuple(v) for k, v in json.load(open(path)).items()}
     try:
@@ -41,7 +42,7 @@ def load_snapshot(day, cache):
         return None
     out = {}
     with py7zr.SevenZipFile(io.BytesIO(raw)) as z:
-        names = [n for n in z.getnames() if f"/{CAT}/" in n and n.endswith("/prices")]
+        names = [n for n in z.getnames() if any(f"/{c}/" in n for c in CATS) and n.endswith("/prices")]
         z.extract(path=os.path.join(cache, "x"), targets=names)
     root = os.path.join(cache, "x")
     for n in names:
@@ -63,14 +64,15 @@ def find_snapshot(target, cache, back=4):
 
 
 def load_catalog(cache):
-    """Singles only: {productId: {...card info...}}. Cached for 1 day."""
-    path = os.path.join(cache, "catalog.json")
+    """Singles only, English and Japanese: {productId: {...card info, lang...}}. Cached for 1 day."""
+    path = os.path.join(cache, "catalog2.json")
     if os.path.exists(path) and time.time() - os.path.getmtime(path) < 86400:
         return {int(k): v for k, v in json.load(open(path)).items()}
-    groups = json.loads(get(f"{BASE}/tcgplayer/{CAT}/groups"))["results"]
+    groups = [(cat, g) for cat in CATS for g in json.loads(get(f"{BASE}/tcgplayer/{cat}/groups"))["results"]]
 
-    def fetch(g):
-        prods = json.loads(get(f"{BASE}/tcgplayer/{CAT}/{g['groupId']}/products"))["results"]
+    def fetch(cg):
+        cat, g = cg
+        prods = json.loads(get(f"{BASE}/tcgplayer/{cat}/{g['groupId']}/products"))["results"]
         rows = {}
         for p in prods:
             ext = {e["name"]: e["value"] for e in p.get("extendedData", [])}
@@ -78,7 +80,7 @@ def load_catalog(cache):
                 continue
             rows[p["productId"]] = {
                 "name": p["name"], "set": g["name"], "number": ext["Number"],
-                "rarity": ext.get("Rarity", ""), "url": p["url"], "img": p["imageUrl"],
+                "rarity": ext.get("Rarity", ""), "url": p["url"], "img": p["imageUrl"], "lang": CATS[cat],
             }
         return rows
 
@@ -116,7 +118,7 @@ def main():
     daily = [now] + [load_snapshot((d0 - dt.timedelta(days=i)).isoformat(), a.cache) for i in range(1, 8)]
     cat = load_catalog(a.cache)
 
-    cards, alerts = [], []
+    cards, alerts, jp_cards = [], [], []
     thin = 0
     def mk(snap, key):
         v = snap.get(key) if snap else None
@@ -133,6 +135,9 @@ def main():
         row = {**info, "id": pid, "variant": sub, "price": price, "low": low, "mid": mid, "chg7": chg7,
                "p1": p1, "p7": p7, "p30": p30,
                "c1": pct(price, p1), "c7": pct(price, p7), "c30": pct(price, p30)}
+        if info.get("lang") != "en":  # Japanese: priced for the scanner only, not in the movers dashboard
+            jp_cards.append(row)
+            continue
         cards.append(row)
         reasons = []
         for base, ch, lim, label in ((p1, row["c1"], a.day_pct, "1d"), (p7, row["c7"], a.week_pct, "7d")):
@@ -178,9 +183,10 @@ def main():
     }
     write_dashboard_files(result, a, thin)
     write_price_file(cards, result["dates"], a.out)
+    write_price_file(jp_cards, result["dates"], a.out, "prices_jp.json")
 
     s, d = result["spikes"], result["drops"]
-    print(f"Prices as of {d0} | {len(cards):,} singles tracked | {len(s)} spikes, {len(d)} drops"
+    print(f"Prices as of {d0} | {len(cards):,} English singles tracked ({len(jp_cards):,} Japanese priced for the scanner) | {len(s)} spikes, {len(d)} drops"
           f" ({thin} unconfirmed moves ignored)")
     for title, rows in (("SPIKES", s), ("DROPS", d)):
         if rows:
@@ -218,7 +224,7 @@ def write_dashboard_files(result, a, thin):
     json.dump({"rows": summary, "meta": meta[1:]}, open(os.path.join(a.out, "dashboard", "summary.json"), "w"))
 
 
-def write_price_file(cards, dates, out):
+def write_price_file(cards, dates, out, name="prices.json"):
     """scanner/prices.json: every single's current, 1/7/30-day-ago price, mid listing price and
     number of days in the last week its market price changed (a sales-activity signal), for the card scanner."""
     sets, idx, rows = [], {}, []
@@ -231,7 +237,7 @@ def write_price_file(cards, dates, out):
     os.makedirs(os.path.join(out, "scanner"), exist_ok=True)
     json.dump({"asof": dates["now"], "d7": dates["d7"], "d30": dates["d30"], "sets": sets,
                "cols": ["id", "name", "set", "number", "rarity", "variant", "price", "low", "p1", "p7", "p30", "mid", "chg7"],
-               "rows": rows}, open(os.path.join(out, "scanner", "prices.json"), "w"), separators=(",", ":"))
+               "rows": rows}, open(os.path.join(out, "scanner", name), "w"), separators=(",", ":"))
 
 
 def strength_dir(r):

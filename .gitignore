@@ -2,3 +2,4 @@
 dashboard/*.json
 scanner/prices.json
 __pycache__/
+scanner/prices_jp.json

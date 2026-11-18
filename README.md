@@ -8,12 +8,12 @@ card's asking price is a good deal.
 
 | Path | What it is |
 | --- | --- |
-| `tracker.py` | Downloads TCGplayer prices (via tcgcsv.com's daily archives), compares today with 1, 7 and 30 days ago, and writes the data files below. |
+| `tracker.py` | Downloads TCGplayer prices (via tcgcsv.com's daily archives) for English cards and Japanese cards (TCGplayer's "Pokemon Japan" category), compares today with 1, 7 and 30 days ago, and writes the data files below. The movers dashboard is English-only. |
 | `dashboard/index.html` | The "Pokémon Price Movers" dashboard page (a Claude Data artifact). Reads `movers.json` and `summary.json`. |
 | `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with market-price stickers with a demand rating, conditions and CSV import, Buying, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
 | `card_images.py` | Fetches official TCGplayer card pictures for recorded transactions; run every 3 hours by a Claude scheduled task. |
 
-Generated files (`dashboard/*.json`, `scanner/prices.json`) are not committed;
+Generated files (`dashboard/*.json`, `scanner/prices.json`, `scanner/prices_jp.json`) are not committed;
 `tracker.py` rebuilds them.
 
 ## Run it
