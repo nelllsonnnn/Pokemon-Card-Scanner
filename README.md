@@ -10,7 +10,7 @@ card's asking price is a good deal.
 | --- | --- |
 | `tracker.py` | Downloads TCGplayer prices (via tcgcsv.com's daily archives), compares today with 1, 7 and 30 days ago, and writes the data files below. |
 | `dashboard/index.html` | The "Pokémon Price Movers" dashboard page (a Claude Data artifact). Reads `movers.json` and `summary.json`. |
-| `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with demand-based sticker prices, conditions and CSV import, Buying, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
+| `scanner/index.html` | The "Pokémon Card Scanner" app. A side menu switches between **Flipping** (Scan, Movers, Calculator with single cards or lots, Transactions) and **Vending** (Inventory with market-price stickers with a demand rating, conditions and CSV import, Buying, Checkout, Shows). Reads `prices.json`; uses Claude to read a card from a photo and to give a 30-day price outlook. Transactions (with In/Out photos) are saved privately to the viewer's Claude account. |
 | `card_images.py` | Fetches official TCGplayer card pictures for recorded transactions; run every 3 hours by a Claude scheduled task. |
 
 Generated files (`dashboard/*.json`, `scanner/prices.json`) are not committed;
@@ -38,14 +38,12 @@ than 2× or under ½ the market price are ignored as outliers).
 
 ## Vending sticker prices
 
-Prices use the normal TCGplayer market price for every condition; the
-condition is recorded and shown on each card.
-Each card gets a demand score (0–100) from how many of the last 7 days its
+The sticker price is the TCGplayer market price (the same for every condition;
+the condition is recorded and shown). Each card also gets a demand rating —
+High, Medium or Low — from a 0–100 score: how many of the last 7 days its
 market price moved (it only moves when the card sells), how close the cheapest
-listing is to market, and how close the mid listing price is. Score 60+ is high
-demand: sticker 105–110% of market. Below 60: 100–104%. Stickers are rounded
-($0.25 under $10, $0.50 under $50, $1 under $500, $5 above) and flagged for
-re-stickering when the price moves 5% or more.
+listing is to market, and how close the mid listing price is. A card is flagged
+for re-stickering when the market moves 5% or more from the price on its sticker.
 
 ## How the scanner judges value
 

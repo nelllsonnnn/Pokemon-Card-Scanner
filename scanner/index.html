@@ -546,7 +546,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
         <button class="var" type="button" data-ivf="high" aria-pressed="false">High demand</button>
       </div>
       <div class="iv-list" id="iv-list"></div>
-      <p class="foot">Sticker price follows demand: high-demand cards get 105&ndash;110% of market, others 100&ndash;104%. Demand comes from how many days this week the card&rsquo;s market price moved (it only moves when the card sells) and how close listings are to market. Prices update daily; a card is flagged when its sticker is 5% or more off.</p>
+      <p class="foot">Sticker price is the TCGplayer market price. The demand tag (High, Medium, Low) shows how well the card sells: how many days this week its market price moved (it only moves when the card sells) and how close listings are to market. Prices update daily; a card is flagged when its sticker is 5% or more off.</p>
     </section>
   </div>
 
@@ -584,7 +584,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
       </div>
       <button class="btn primary" id="by-done" type="button" disabled>Done: add to inventory</button>
       <div class="status" id="by-msg" role="status"></div>
-      <p class="foot">Prices use the normal TCGplayer market price whatever the condition; the condition is saved with each card. You pay = market &times; buy %. Sticker = market &times; demand markup (100&ndash;110%).</p>
+      <p class="foot">Prices use the normal TCGplayer market price whatever the condition; the condition is saved with each card. You pay = market &times; buy %. Sticker = market price, with its demand shown.</p>
     </section>
   </div>
 
@@ -1485,7 +1485,7 @@ Pikachu,Base Set,58/102,Normal,Lightly Played,3,2.50,4.00</pre>
   function priceInfo(it) {
     const v = liveVar(it), d = demandOf(v), nm = v?.price ?? (it.market > 0 ? +it.market : null);
     const ck = condKey(it.cond), market = nm > 0 ? round2(nm * condMult(ck)) : null;
-    const auto = market > 0 ? niceRound(market * (d ? d.mult : 1.02)) : null;
+    const auto = market > 0 ? round2(market) : null; // sticker = market price; demand is shown, not added
     const sticker = it.custom > 0 ? +it.custom : auto;
     const tag = it.tag > 0 ? +it.tag : null;
     const restick = tag != null && sticker != null && Math.abs(sticker - tag) >= Math.max(0.5, tag * 0.05);

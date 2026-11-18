@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Weekly sticker-price report for the Vending inventory.
 
-Uses the same demand score and sticker formula as the scanner page:
-  demand score 0-100 = 60% sales activity (days of the last 7 the market price
-  moved) + 25% how close the cheapest listing is to market + 15% how close the
-  mid listing price is to market.  Score 60+ = high demand -> 105-110% of market,
-  below 60 -> 100-104%.  The normal market price is used for every condition;
-  the condition is only shown.  Rounded to $0.25 under $10, $0.50 under $50, $1 under
-  $500, $5 above.  A card needs a new sticker when the price on its sticker (tag)
-  is off by 5% or more (at least $0.50).
+Same rules as the scanner page: the sticker price is the TCGplayer market price
+(for every condition).  Each card also gets a demand rating from a 0-100 score:
+60% sales activity (days of the last 7 the market price moved) + 25% how close
+the cheapest listing is to market + 15% how close the mid listing price is to
+market.  60+ = high, 30-59 = medium, below 30 = low.  A card needs a new sticker
+when the price on its sticker (tag) is off by 5% or more (at least $0.50).
 
 Usage:  python3 sticker_report.py INV_DIR PRICES_JSON
   INV_DIR      one JSON file per inventory document (ArtifactData list out_dir of
@@ -85,7 +83,7 @@ def main(inv_dir, prices_path):
         ck = cond_key(it.get("cond"))
         nm = v["price"] if v and v.get("price") else (it.get("market") or None)
         market = round(nm * CONDS[ck][1], 2) if nm else None
-        auto = nice_round(market * (dm["mult"] if dm else 1.02)) if market else None
+        auto = market
         custom = it.get("custom") if (it.get("custom") or 0) > 0 else None
         sticker = custom or auto
         tag = it.get("tag") if (it.get("tag") or 0) > 0 else None
